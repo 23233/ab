@@ -1,4 +1,4 @@
-module apiBuilder
+module github.com/23233/apiBuilder
 
 go 1.14
 
