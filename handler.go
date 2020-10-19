@@ -41,15 +41,23 @@ func GetAllFunc(ctx iris.Context) {
 		}
 		return nowApi.Config.Engine.Table(model.MapName)
 	}
+
+	where := func() *xorm.Session {
+		if len(model.FieldList.Deleted) >= 1 {
+			return base().Where(fmt.Sprintf("%s = ? OR %s IS NULL", model.FieldList.Deleted, model.FieldList.Deleted), "0001-01-01 00:00:00")
+		}
+		return base()
+	}
+
 	// 获取总数量
-	allCount, err := base().Count()
+	allCount, err := where().Count()
 	if err != nil {
 		fastError(err, ctx)
 		return
 	}
 
 	// 获取内容
-	dataList, err := base().Limit(pageSize, start).QueryString()
+	dataList, err := where().Limit(pageSize, start).QueryString()
 	if err != nil {
 		fastError(err, ctx)
 		return
