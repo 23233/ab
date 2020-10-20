@@ -27,6 +27,7 @@ type Config struct {
 	App        *iris.Application
 	StructList []interface{}
 	Engine     *xorm.Engine
+	Prefix     string // 访问前缀 例如:/api/v1
 }
 
 type modelInfo struct {
@@ -53,10 +54,11 @@ func New(c Config) *Api {
 }
 
 func (c *Api) Run() {
+	p := c.Config.App.Party(c.Config.Prefix)
 	for _, model := range c.Config.StructList {
 		apiName := c.Config.Engine.TableName(model)
 		var api iris.Party
-		api = c.Config.App.Party(apiName)
+		api = p.Party(apiName)
 
 		// 私密访问
 		enablePrivateAccess := false
