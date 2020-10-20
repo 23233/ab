@@ -1,4 +1,4 @@
-module github.com/23233/api_builder
+module github.com/23233/ab
 
 go 1.14
 

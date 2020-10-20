@@ -1,4 +1,4 @@
-package api_builder
+package ab
 
 import (
 	"github.com/pkg/errors"
