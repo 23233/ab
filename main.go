@@ -9,41 +9,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"xorm.io/xorm"
 )
 
 var nowApi *Api
-
-func isContain(items []string, item string) bool {
-	for _, eachItem := range items {
-		if eachItem == item {
-			return true
-		}
-	}
-	return false
-}
-
-type Config struct {
-	App        *iris.Application
-	StructList []interface{}
-	Engine     *xorm.Engine
-	Prefix     string // 访问前缀 例如:/api/v1
-}
-
-type modelInfo struct {
-	MapName       string
-	Model         interface{}
-	Private       bool
-	KeyName       string
-	TableColName  string
-	StructColName string
-	FieldList     TableFieldsResp `json:"field_list"`
-}
-
-type Api struct {
-	Config     *Config
-	ModelLists []modelInfo
-}
 
 func New(c Config) *Api {
 	nowApi = &Api{

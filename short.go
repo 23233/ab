@@ -1,5 +1,32 @@
 package ab
 
+import (
+	"github.com/kataras/iris/v12"
+	"xorm.io/xorm"
+)
+
+type Config struct {
+	App        *iris.Application
+	StructList []interface{}
+	Engine     *xorm.Engine
+	Prefix     string // 访问前缀 例如:/api/v1
+}
+
+type modelInfo struct {
+	MapName       string
+	Model         interface{}
+	Private       bool
+	KeyName       string
+	TableColName  string
+	StructColName string
+	FieldList     TableFieldsResp `json:"field_list"`
+}
+
+type Api struct {
+	Config     *Config
+	ModelLists []modelInfo
+}
+
 // 模型信息
 type structInfo struct {
 	Name         string `json:"name"`
