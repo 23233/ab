@@ -1,10 +1,16 @@
 package ab
 
 import "github.com/kataras/iris/v12"
+import "github.com/kataras/iris/v12/context"
 
 // 全局访问中间件 优先级最高
 type GlobalPreMiddlewareProcess interface {
 	ApiGlobalPreMiddleware(ctx iris.Context)
+}
+
+// 中间件列表 优先级第二
+type MiddlewareListProcess interface {
+	ApiMiddleware() []context.Handler
 }
 
 // 私密访问

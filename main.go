@@ -62,6 +62,12 @@ func (c *Api) Run() {
 		if processor, ok := model.(GlobalPreMiddlewareProcess); ok {
 			api.Use(processor.ApiGlobalPreMiddleware)
 		}
+		// 判断是否还有其他中间件
+		if processor, ok := model.(MiddlewareListProcess); ok {
+			midList := processor.ApiMiddleware()
+			api.Use(midList...)
+		}
+
 		var disableMethods []string
 		// 判断是否设置了禁用方法
 		if processor, ok := model.(DisableMethodsProcess); ok {
