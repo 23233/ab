@@ -1,4 +1,4 @@
-package apiBuilder
+package api_builder
 
 // 模型信息
 type structInfo struct {
