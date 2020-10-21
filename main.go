@@ -144,7 +144,7 @@ func (c *Api) Run() {
 }
 
 func (c *Api) pathGetModel(pathName string) modelInfo {
-	p := strings.Split(pathName, "/")[1]
+	p := strings.ReplaceAll(pathName, c.Config.Prefix, "")
 	for _, m := range c.ModelLists {
 		if m.MapName == p {
 			return m
