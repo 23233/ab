@@ -6,10 +6,6 @@ import (
 	"xorm.io/xorm"
 )
 
-var (
-	pageSize = 20
-)
-
 // 错误返回
 func fastError(err error, ctx iris.Context, msg ...string) {
 	ctx.StatusCode(iris.StatusBadRequest)
@@ -31,9 +27,14 @@ func fastError(err error, ctx iris.Context, msg ...string) {
 // 获取所有 分页 页码用page标识
 func GetAllFunc(ctx iris.Context) {
 	page := ctx.URLParamIntDefault("page", 1)
+	pageSize := ctx.URLParamIntDefault("page_size", 20)
+	if pageSize > 100 {
+		pageSize = 100
+	}
 	model := nowApi.pathGetModel(ctx.Path())
 	privateName := ctx.Values().Get(model.KeyName)
 	start := (page - 1) * pageSize
+	end := page * (pageSize * 2)
 
 	var base = func() *xorm.Session {
 		if model.Private {
@@ -57,13 +58,15 @@ func GetAllFunc(ctx iris.Context) {
 	}
 
 	// 获取内容
-	dataList, err := where().Limit(pageSize, start).QueryString()
+	dataList := make([]map[string]string, 0)
+	if len(model.FieldList.AutoIncrement) >= 1 {
+		dataList, err = where().And(fmt.Sprintf("%s between ? and ?", model.FieldList.AutoIncrement), start, end).Limit(pageSize).QueryString()
+	} else {
+		dataList, err = where().Limit(pageSize, start).QueryString()
+	}
 	if err != nil {
 		fastError(err, ctx)
 		return
-	}
-	if dataList == nil {
-		dataList = make([]map[string]string, 0)
 	}
 
 	_, _ = ctx.JSON(iris.Map{
