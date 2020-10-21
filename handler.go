@@ -64,6 +64,9 @@ func GetAllFunc(ctx iris.Context) {
 	} else {
 		dataList, err = where().Limit(pageSize, start).QueryString()
 	}
+	if dataList == nil {
+		dataList = make([]map[string]string, 0)
+	}
 	if err != nil {
 		fastError(err, ctx)
 		return
