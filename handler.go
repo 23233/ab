@@ -27,27 +27,51 @@ func fastError(err error, ctx iris.Context, msg ...string) {
 // 获取所有 分页 页码用page标识
 func GetAllFunc(ctx iris.Context) {
 	page := ctx.URLParamIntDefault("page", 1)
+	if page > 100 {
+		page = 100
+	}
 	pageSize := ctx.URLParamIntDefault("page_size", 20)
 	if pageSize > 100 {
 		pageSize = 100
 	}
 	model := nowApi.pathGetModel(ctx.Path())
+
+	// 解析出order by
+	descField := ctx.URLParam("order_desc")
+	orderBy := ctx.URLParam("order")
+	// 从url中解析出filter
+	filterList := filterMatch(ctx.URLParams(), model.FieldList.Fields)
+
 	privateName := ctx.Values().Get(model.KeyName)
 	start := (page - 1) * pageSize
 	end := page * (pageSize * 2)
 
 	var base = func() *xorm.Session {
+		var d *xorm.Session
+		d = nowApi.Config.Engine.Table(model.MapName)
 		if model.Private {
-			return nowApi.Config.Engine.Table(model.MapName).Where(fmt.Sprintf("%s = ?", model.TableColName), privateName)
+			d = d.Where(fmt.Sprintf("%s = ?", model.TableColName), privateName)
 		}
-		return nowApi.Config.Engine.Table(model.MapName)
+		if len(orderBy) >= 1 {
+			d = d.OrderBy(orderBy)
+		} else if len(descField) >= 1 {
+			d = d.Desc(descField)
+		}
+		return d
 	}
 
 	where := func() *xorm.Session {
+		var d *xorm.Session
+		d = base()
 		if len(model.FieldList.Deleted) >= 1 {
-			return base().Where(fmt.Sprintf("%s = ? OR %s IS NULL", model.FieldList.Deleted, model.FieldList.Deleted), "0001-01-01 00:00:00")
+			d = base().Where(fmt.Sprintf("%s = ? OR %s IS NULL", model.FieldList.Deleted, model.FieldList.Deleted), "0001-01-01 00:00:00")
 		}
-		return base()
+		if len(filterList) >= 1 {
+			for k, v := range filterList {
+				d = d.Where(fmt.Sprintf("%s = ?", k), v)
+			}
+		}
+		return d
 	}
 
 	// 获取总数量
@@ -59,25 +83,33 @@ func GetAllFunc(ctx iris.Context) {
 
 	// 获取内容
 	dataList := make([]map[string]string, 0)
-	if len(model.FieldList.AutoIncrement) >= 1 {
-		dataList, err = where().And(fmt.Sprintf("%s between ? and ?", model.FieldList.AutoIncrement), start, end).Limit(pageSize).QueryString()
-	} else {
-		dataList, err = where().Limit(pageSize, start).QueryString()
+	if allCount >= 1 {
+		if len(model.FieldList.AutoIncrement) >= 1 && len(filterList) < 1 && len(orderBy) < 1 && len(descField) < 1 {
+			dataList, err = where().And(fmt.Sprintf("%s between ? and ?", model.FieldList.AutoIncrement), start, end).Limit(pageSize).QueryString()
+		} else {
+			dataList, err = where().Limit(pageSize, start).QueryString()
+		}
+		if err != nil {
+			fastError(err, ctx)
+			return
+		}
 	}
-	if dataList == nil {
-		dataList = make([]map[string]string, 0)
-	}
-	if err != nil {
-		fastError(err, ctx)
-		return
-	}
-
-	_, _ = ctx.JSON(iris.Map{
+	result := iris.Map{
 		"page_size": pageSize,
 		"page":      page,
 		"all":       allCount,
 		"data":      dataList,
-	})
+	}
+	if len(descField) >= 1 {
+		result["desc_field"] = descField
+	}
+	if len(orderBy) >= 1 {
+		result["order"] = orderBy
+	}
+	if len(filterList) >= 1 {
+		result["filter"] = filterList
+	}
+	_, _ = ctx.JSON(result)
 
 }
 

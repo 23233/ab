@@ -3,6 +3,7 @@ package ab
 import (
 	"github.com/pkg/errors"
 	"strconv"
+	"strings"
 )
 
 // 字符串转换成bool
@@ -27,4 +28,22 @@ func isContain(items []string, item string) bool {
 		}
 	}
 	return false
+}
+
+func filterMatch(fullParams map[string]string, fields []structInfo) map[string]string {
+	d := make(map[string]string, 0)
+	for k, v := range fullParams {
+		if strings.HasPrefix(k, "filter_") {
+			for _, field := range fields {
+				if field.MapName == strings.Replace(k, "filter_", "", 1) {
+					// 为了安全 长度限制一下
+					if len(v) >= 25 {
+						break
+					}
+					d[field.MapName] = strings.Trim(v, " ")
+				}
+			}
+		}
+	}
+	return d
 }
