@@ -26,6 +26,11 @@ type DisableMethodsProcess interface {
 	ApiDisableMethods() []string
 }
 
+// 搜索字段
+type SearchFieldsProcess interface {
+	ApiSearchFields() []string
+}
+
 // 方法单独的中间件
 type GetAllPreMiddlewareProcess interface {
 	ApiGetAllPreMiddleware(ctx iris.Context)

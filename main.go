@@ -46,6 +46,19 @@ func (c *Api) Run() {
 			StructColName: privateColName,
 			FieldList:     c.tableNameReflectFieldsAndTypes(apiName),
 		}
+		if processor, ok := model.(SearchFieldsProcess); ok {
+			var result []string
+			searchFields := processor.ApiSearchFields()
+			for _, f := range searchFields {
+				for _, field := range info.FieldList.Fields {
+					if field.Name == f || field.MapName == f {
+						result = append(result, field.MapName)
+						break
+					}
+				}
+			}
+			info.SearchFields = result
+		}
 
 		if enablePrivateAccess {
 			for _, field := range info.FieldList.Fields {

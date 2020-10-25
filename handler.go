@@ -3,6 +3,7 @@ package ab
 import (
 	"fmt"
 	"github.com/kataras/iris/v12"
+	"strings"
 	"xorm.io/xorm"
 )
 
@@ -41,6 +42,13 @@ func GetAllFunc(ctx iris.Context) {
 	orderBy := ctx.URLParam("order")
 	// 从url中解析出filter
 	filterList := filterMatch(ctx.URLParams(), model.FieldList.Fields)
+	s := ctx.URLParam("search")
+	search := strings.ReplaceAll(s, "__", "%")
+	if len(search) >= 1 {
+		if len(model.SearchFields) < 1 {
+			search = ""
+		}
+	}
 
 	privateName := ctx.Values().Get(model.KeyName)
 	start := (page - 1) * pageSize
@@ -71,6 +79,11 @@ func GetAllFunc(ctx iris.Context) {
 				d = d.Where(fmt.Sprintf("%s = ?", k), v)
 			}
 		}
+		if len(search) >= 1 {
+			for _, s := range model.SearchFields {
+				d = d.Where(fmt.Sprintf("%s like ?", s), search)
+			}
+		}
 		return d
 	}
 
@@ -84,7 +97,7 @@ func GetAllFunc(ctx iris.Context) {
 	// 获取内容
 	dataList := make([]map[string]string, 0)
 	if allCount >= 1 {
-		if len(model.FieldList.AutoIncrement) >= 1 && len(filterList) < 1 && len(orderBy) < 1 && len(descField) < 1 {
+		if len(model.FieldList.AutoIncrement) >= 1 && len(filterList) < 1 && len(orderBy) < 1 && len(descField) < 1 && len(search) < 1 {
 			dataList, err = where().And(fmt.Sprintf("%s between ? and ?", model.FieldList.AutoIncrement), start, end).Limit(pageSize).QueryString()
 		} else {
 			dataList, err = where().Limit(pageSize, start).QueryString()
@@ -109,6 +122,10 @@ func GetAllFunc(ctx iris.Context) {
 	if len(filterList) >= 1 {
 		result["filter"] = filterList
 	}
+	if len(search) >= 1 {
+		result["search"] = s
+	}
+
 	_, _ = ctx.JSON(result)
 
 }

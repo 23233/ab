@@ -67,6 +67,10 @@ type ComplexModelD struct {
 	TestManyFk       string        `json:"test_many_fk" sp:"fk:ComplexModelC multiple"` // one to many
 }
 
+func (c *ComplexModelD) ApiSearchFields() []string {
+	return []string{"Name", "TestString"}
+}
+
 type TestUserModel struct {
 	Id       uint64 `xorm:"autoincr pk unique" json:"id"`
 	UserName string `xorm:"varchar(60) notnull" json:"user_name"`

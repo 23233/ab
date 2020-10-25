@@ -20,6 +20,7 @@ type modelInfo struct {
 	TableColName  string
 	StructColName string
 	FieldList     TableFieldsResp `json:"field_list"`
+	SearchFields  []string
 }
 
 type Api struct {
