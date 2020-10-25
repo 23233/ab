@@ -3,6 +3,7 @@ package ab
 import (
 	"fmt"
 	"github.com/kataras/iris/v12"
+	"github.com/pkg/errors"
 	"strings"
 	"xorm.io/xorm"
 )
@@ -46,7 +47,8 @@ func GetAllFunc(ctx iris.Context) {
 	search := strings.ReplaceAll(s, "__", "%")
 	if len(search) >= 1 {
 		if len(model.SearchFields) < 1 {
-			search = ""
+			fastError(errors.New("搜索参数错误"), ctx)
+			return
 		}
 	}
 
