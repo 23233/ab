@@ -18,6 +18,7 @@ func New(c Config) *Api {
 		Config:     &c,
 		ModelLists: []modelInfo{},
 	}
+	nowApi.Run()
 	return nowApi
 }
 
