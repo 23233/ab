@@ -47,7 +47,7 @@ func GetAllFunc(ctx iris.Context) {
 	search := strings.ReplaceAll(s, "__", "%")
 	if len(search) >= 1 {
 		if len(model.SearchFields) < 1 {
-			fastError(errors.New("搜索参数错误"), ctx)
+			fastError(errors.New("搜索功能未启用"), ctx)
 			return
 		}
 	}
