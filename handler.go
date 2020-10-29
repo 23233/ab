@@ -27,7 +27,8 @@ func fastError(err error, ctx iris.Context, msg ...string) {
 }
 
 // 获取所有 分页 页码用page标识
-func GetAllFunc(ctx iris.Context) {
+
+func (c *Api) GetAllFunc(ctx iris.Context) {
 	page := ctx.URLParamIntDefault("page", 1)
 	if page > 100 {
 		page = 100
@@ -36,7 +37,7 @@ func GetAllFunc(ctx iris.Context) {
 	if pageSize > 100 {
 		pageSize = 100
 	}
-	model := nowApi.pathGetModel(ctx.Path())
+	model := c.pathGetModel(ctx.Path())
 
 	// 解析出order by
 	descField := ctx.URLParam("order_desc")
@@ -58,7 +59,7 @@ func GetAllFunc(ctx iris.Context) {
 
 	var base = func() *xorm.Session {
 		var d *xorm.Session
-		d = nowApi.Config.Engine.Table(model.MapName)
+		d = c.Config.Engine.Table(model.MapName)
 		if model.Private {
 			d = d.Where(fmt.Sprintf("%s = ?", model.TableColName), privateName)
 		}
@@ -133,21 +134,21 @@ func GetAllFunc(ctx iris.Context) {
 }
 
 // 单个 /{id:uint64}
-func GetSingle(ctx iris.Context) {
+func (c *Api) GetSingle(ctx iris.Context) {
 	id, err := ctx.Params().GetUint64("id")
 	if err != nil {
 		fastError(err, ctx, "参数错误")
 		return
 	}
-	model := nowApi.pathGetModel(ctx.Path())
+	model := c.pathGetModel(ctx.Path())
 	privateName := ctx.Values().Get(model.KeyName)
-	newData := nowApi.newModel(model.MapName)
+	newData := c.newModel(model.MapName)
 
 	var base = func() *xorm.Session {
 		if model.Private {
-			return nowApi.Config.Engine.Table(newData).Where(fmt.Sprintf("%s = ?", model.TableColName), privateName)
+			return c.Config.Engine.Table(newData).Where(fmt.Sprintf("%s = ?", model.TableColName), privateName)
 		}
-		return nowApi.Config.Engine.Table(newData)
+		return c.Config.Engine.Table(newData)
 	}
 	has, err := base().ID(id).Get(newData)
 	if err != nil || has == false {
@@ -158,9 +159,9 @@ func GetSingle(ctx iris.Context) {
 }
 
 // 新增数据
-func AddData(ctx iris.Context) {
-	model := nowApi.pathGetModel(ctx.Path())
-	newInstance, err := nowApi.getCtxValues(model.MapName, ctx)
+func (c *Api) AddData(ctx iris.Context) {
+	model := c.pathGetModel(ctx.Path())
+	newInstance, err := c.getCtxValues(model.MapName, ctx)
 	if err != nil {
 		fastError(err, ctx)
 		return
@@ -186,7 +187,7 @@ func AddData(ctx iris.Context) {
 
 	singleData := newInstance.Interface()
 
-	aff, err := nowApi.Config.Engine.Table(model.MapName).InsertOne(singleData)
+	aff, err := c.Config.Engine.Table(model.MapName).InsertOne(singleData)
 	if err != nil || aff == 0 {
 		fastError(err, ctx, "新增数据失败")
 		return
@@ -195,8 +196,8 @@ func AddData(ctx iris.Context) {
 }
 
 // 编辑数据 /{id:uint64}
-func EditData(ctx iris.Context) {
-	model := nowApi.pathGetModel(ctx.Path())
+func (c *Api) EditData(ctx iris.Context) {
+	model := c.pathGetModel(ctx.Path())
 	privateName := ctx.Values().Get(model.KeyName)
 	id, err := ctx.Params().GetUint64("id")
 	if err != nil {
@@ -206,9 +207,9 @@ func EditData(ctx iris.Context) {
 
 	var base = func() *xorm.Session {
 		if model.Private {
-			return nowApi.Config.Engine.Table(model.MapName).Where(fmt.Sprintf("%s = ?", model.TableColName), privateName)
+			return c.Config.Engine.Table(model.MapName).Where(fmt.Sprintf("%s = ?", model.TableColName), privateName)
 		}
-		return nowApi.Config.Engine.Table(model.MapName)
+		return c.Config.Engine.Table(model.MapName)
 	}
 	// 先获取数据是否存在
 	has, err := base().Where("id = ?", id).Exist()
@@ -220,7 +221,7 @@ func EditData(ctx iris.Context) {
 		fastError(err, ctx, "获取数据失败")
 		return
 	}
-	newInstance, err := nowApi.getCtxValues(model.MapName, ctx)
+	newInstance, err := c.getCtxValues(model.MapName, ctx)
 	if err != nil {
 		fastError(err, ctx)
 		return
@@ -247,7 +248,7 @@ func EditData(ctx iris.Context) {
 
 	// 全量更新
 	singleData := newInstance.Interface()
-	aff, err := nowApi.Config.Engine.Table(model.MapName).ID(id).AllCols().Update(singleData)
+	aff, err := c.Config.Engine.Table(model.MapName).ID(id).AllCols().Update(singleData)
 	if err != nil || aff < 1 {
 		fastError(err, ctx, "更新数据失败")
 		return
@@ -256,12 +257,12 @@ func EditData(ctx iris.Context) {
 }
 
 // 删除数据 /{id:uint64}
-func DeleteData(ctx iris.Context) {
+func (c *Api) DeleteData(ctx iris.Context) {
 	// 先获取
-	model := nowApi.pathGetModel(ctx.Path())
+	model := c.pathGetModel(ctx.Path())
 	privateName := ctx.Values().Get(model.KeyName)
 	id, err := ctx.Params().GetUint64("id")
-	newData := nowApi.newModel(model.MapName)
+	newData := c.newModel(model.MapName)
 
 	if err != nil {
 		fastError(err, ctx, "参数错误")
@@ -269,9 +270,9 @@ func DeleteData(ctx iris.Context) {
 	}
 	var base = func() *xorm.Session {
 		if model.Private {
-			return nowApi.Config.Engine.Table(newData).Where(fmt.Sprintf("%s = ?", model.TableColName), privateName)
+			return c.Config.Engine.Table(newData).Where(fmt.Sprintf("%s = ?", model.TableColName), privateName)
 		}
-		return nowApi.Config.Engine.Table(newData)
+		return c.Config.Engine.Table(newData)
 	}
 	// 先获取数据是否存在
 

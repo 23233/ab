@@ -47,13 +47,12 @@ func main() {
 		_, _ = ctx.JSON(iris.Map{})
 	})
 
-	api := ab.New(ab.Config{
-		App:        app,
+	v1 := app.Party("/api/v1")
+	ab.New(ab.Config{
+		Party:      v1,
 		StructList: modelList,
 		Engine:     Engine,
-		Prefix:     "/api/v1/",
 	})
-	api.Run()
 
 	_ = app.Listen(":8080")
 

@@ -7,36 +7,36 @@ import (
 	"log"
 	"reflect"
 	"strconv"
-	"strings"
 	"time"
 )
 
-var nowApi *Api
-
 func New(c Config) *Api {
-	nowApi = &Api{
-		Config:     &c,
-		ModelLists: []modelInfo{},
-	}
-	nowApi.Run()
-	return nowApi
+	a := new(Api)
+	a.Config = &c
+	a.Run()
+	return a
 }
 
 func (c *Api) Run() {
-	p := c.Config.App.Party(c.Config.Prefix)
 	for _, model := range c.Config.StructList {
 		apiName := c.Config.Engine.TableName(model)
-		var api iris.Party
-		api = p.Party(apiName)
-
+		api := c.Config.Party.Party("/" + apiName)
 		// 私密访问
+		privateContextKey := c.Config.PrivateContextKey
+		privateColName := c.Config.PrivateColName
 		enablePrivateAccess := false
-		privateContextKey := ""
-		privateColName := ""
-		if processor, ok := model.(PrivateAccessProcess); ok {
-			enablePrivateAccess = true
-			privateContextKey = processor.ApiPrivateContextKey()
-			privateColName = processor.ApiPrivateTableColName()
+		for _, item := range c.Config.PrivateList {
+			name := c.Config.Engine.TableName(item)
+			if apiName == name {
+				enablePrivateAccess = true
+				if c.Config.PrivateLocalFirst {
+					if processor, ok := item.(PrivateAccessProcess); ok {
+						privateContextKey = processor.ApiPrivateContextKey()
+						privateColName = processor.ApiPrivateTableColName()
+					}
+				}
+
+			}
 		}
 
 		info := modelInfo{
@@ -46,6 +46,7 @@ func (c *Api) Run() {
 			KeyName:       privateContextKey,
 			StructColName: privateColName,
 			FieldList:     c.tableNameReflectFieldsAndTypes(apiName),
+			FullPath:      api.GetRelPath(),
 		}
 		if processor, ok := model.(SearchFieldsProcess); ok {
 			var result []string
@@ -94,7 +95,7 @@ func (c *Api) Run() {
 			if processor, ok := model.(GetAllProcess); ok {
 				route = api.Handle("GET", "/", processor.ApiGetAll)
 			} else {
-				route = api.Handle("GET", "/", GetAllFunc)
+				route = api.Handle("GET", "/", c.GetAllFunc)
 			}
 			if processor, ok := model.(GetAllPreMiddlewareProcess); ok {
 				route.Use(processor.ApiGetAllPreMiddleware)
@@ -107,7 +108,7 @@ func (c *Api) Run() {
 			if processor, ok := model.(GetSingleProcess); ok {
 				route = api.Handle("GET", "/{id:uint64}", processor.ApiGetSingle)
 			} else {
-				route = api.Handle("GET", "/{id:uint64}", GetSingle)
+				route = api.Handle("GET", "/{id:uint64}", c.GetSingle)
 			}
 			if processor, ok := model.(GetSinglePreMiddlewareProcess); ok {
 				route.Use(processor.ApiGetSinglePreMiddleware)
@@ -120,7 +121,7 @@ func (c *Api) Run() {
 			if processor, ok := model.(PostProcess); ok {
 				route = api.Handle("POST", "/", processor.ApiPost)
 			} else {
-				route = api.Handle("POST", "/", AddData)
+				route = api.Handle("POST", "/", c.AddData)
 			}
 			if processor, ok := model.(PostPreMiddlewareProcess); ok {
 				route.Use(processor.ApiPostPreMiddleware)
@@ -133,7 +134,7 @@ func (c *Api) Run() {
 			if processor, ok := model.(PutProcess); ok {
 				route = api.Handle("PUT", "/{id:uint64}", processor.ApiPut)
 			} else {
-				route = api.Handle("PUT", "/{id:uint64}", EditData)
+				route = api.Handle("PUT", "/{id:uint64}", c.EditData)
 			}
 			if processor, ok := model.(PutPreMiddlewareProcess); ok {
 				route.Use(processor.ApiPutPreMiddleware)
@@ -146,7 +147,7 @@ func (c *Api) Run() {
 			if processor, ok := model.(DeleteProcess); ok {
 				route = api.Handle("DELETE", "/{id:uint64}", processor.ApiDelete)
 			} else {
-				route = api.Handle("DELETE", "/{id:uint64}", DeleteData)
+				route = api.Handle("DELETE", "/{id:uint64}", c.DeleteData)
 			}
 			if processor, ok := model.(PutDeleteMiddlewareProcess); ok {
 				route.Use(processor.ApiDeletePreMiddleware)
@@ -158,9 +159,8 @@ func (c *Api) Run() {
 }
 
 func (c *Api) pathGetModel(pathName string) modelInfo {
-	p := strings.ReplaceAll(pathName, c.Config.Prefix, "")
 	for _, m := range c.ModelLists {
-		if m.MapName == p {
+		if m.FullPath == pathName {
 			return m
 		}
 	}

@@ -6,14 +6,18 @@ import (
 )
 
 type Config struct {
-	App        *iris.Application
-	StructList []interface{}
-	Engine     *xorm.Engine
-	Prefix     string // 访问前缀 例如:/api/v1
+	Party             iris.Party
+	StructList        []interface{}
+	Engine            *xorm.Engine
+	PrivateList       []interface{} // 私密模型列表
+	PrivateContextKey string        // 上下文key
+	PrivateColName    string        // 字段名
+	PrivateLocalFirst bool          // 模型定义优先
 }
 
 type modelInfo struct {
 	MapName       string
+	FullPath      string
 	Model         interface{}
 	Private       bool
 	KeyName       string
