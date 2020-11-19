@@ -5,14 +5,18 @@ import (
 	"xorm.io/xorm"
 )
 
+type PrivateModel struct {
+	Model             interface{}
+	PrivateContextKey string // 上下文key
+	PrivateColName    string // 字段名
+}
+
 type Config struct {
 	Party             iris.Party
 	StructList        []interface{}
 	Engine            *xorm.Engine
-	PrivateList       []interface{} // 私密模型列表
-	PrivateContextKey string        // 上下文key
-	PrivateColName    string        // 字段名
-	PrivateLocalFirst bool          // 模型定义优先
+	PrivateList       []PrivateModel // 私密模型列表
+	PrivateLocalFirst bool           // 私密模型定义优先
 }
 
 type modelInfo struct {

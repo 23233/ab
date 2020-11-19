@@ -21,16 +21,20 @@ func (c *Api) Run() {
 	for _, model := range c.Config.StructList {
 		apiName := c.Config.Engine.TableName(model)
 		api := c.Config.Party.Party("/" + apiName)
-		// 私密访问
-		privateContextKey := c.Config.PrivateContextKey
-		privateColName := c.Config.PrivateColName
+
+		privateContextKey := ""
+		privateColName := ""
 		enablePrivateAccess := false
+
+		// 私密访问
 		for _, item := range c.Config.PrivateList {
-			name := c.Config.Engine.TableName(item)
+			name := c.Config.Engine.TableName(item.Model)
 			if apiName == name {
+				privateContextKey = item.PrivateContextKey
+				privateColName = item.PrivateColName
 				enablePrivateAccess = true
 				if c.Config.PrivateLocalFirst {
-					if processor, ok := item.(PrivateAccessProcess); ok {
+					if processor, ok := item.Model.(PrivateAccessProcess); ok {
 						privateContextKey = processor.ApiPrivateContextKey()
 						privateColName = processor.ApiPrivateTableColName()
 					}
