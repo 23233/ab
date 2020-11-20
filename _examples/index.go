@@ -49,9 +49,25 @@ func main() {
 
 	v1 := app.Party("/api/v1")
 	ab.New(ab.Config{
-		Party:      v1,
-		StructList: modelList,
-		Engine:     Engine,
+		Party: v1,
+		StructList: []ab.SingleModel{
+			{
+				Model: new(model.TestModelA),
+			},
+			{
+				Model: new(model.TestModelB),
+			},
+			{
+				Model: new(model.ComplexModelC),
+			},
+			{
+				Model: new(model.ComplexModelD),
+			},
+			{
+				Model: new(model.TestStructComplexModel),
+			},
+		},
+		Engine: Engine,
 	})
 
 	_ = app.Listen(":8080")

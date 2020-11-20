@@ -2,21 +2,24 @@ package ab
 
 import (
 	"github.com/kataras/iris/v12"
+	"github.com/kataras/iris/v12/context"
 	"xorm.io/xorm"
 )
 
-type PrivateModel struct {
+type SingleModel struct {
 	Model             interface{}
-	PrivateContextKey string // 上下文key
-	PrivateColName    string // 字段名
+	EnablePrivate     bool     // 启用私密模型
+	PrivateContextKey string   // 上下文key
+	PrivateColName    string   // 字段名
+	DisableMethods    []string // get(all) get(single) post put delete
+	SearchFields      []string
+	Middlewares       []context.Handler
 }
 
 type Config struct {
-	Party             iris.Party
-	StructList        []interface{}
-	Engine            *xorm.Engine
-	PrivateList       []PrivateModel // 私密模型列表
-	PrivateLocalFirst bool           // 私密模型定义优先
+	Party      iris.Party
+	StructList []SingleModel
+	Engine     *xorm.Engine
 }
 
 type modelInfo struct {

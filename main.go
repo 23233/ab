@@ -18,44 +18,24 @@ func New(c Config) *Api {
 }
 
 func (c *Api) Run() {
-	for _, model := range c.Config.StructList {
+	for _, item := range c.Config.StructList {
+		model := item.Model
 		apiName := c.Config.Engine.TableName(model)
 		api := c.Config.Party.Party("/" + apiName)
-
-		privateContextKey := ""
-		privateColName := ""
-		enablePrivateAccess := false
-
-		// 私密访问
-		for _, item := range c.Config.PrivateList {
-			name := c.Config.Engine.TableName(item.Model)
-			if apiName == name {
-				privateContextKey = item.PrivateContextKey
-				privateColName = item.PrivateColName
-				enablePrivateAccess = true
-				if c.Config.PrivateLocalFirst {
-					if processor, ok := item.Model.(PrivateAccessProcess); ok {
-						privateContextKey = processor.ApiPrivateContextKey()
-						privateColName = processor.ApiPrivateTableColName()
-					}
-				}
-
-			}
-		}
 
 		info := modelInfo{
 			MapName:       apiName,
 			Model:         model,
-			Private:       enablePrivateAccess,
-			KeyName:       privateContextKey,
-			StructColName: privateColName,
+			Private:       item.EnablePrivate,
+			KeyName:       item.PrivateContextKey,
+			StructColName: item.PrivateColName,
 			FieldList:     c.tableNameReflectFieldsAndTypes(apiName),
 			FullPath:      api.GetRelPath(),
 		}
-		if processor, ok := model.(SearchFieldsProcess); ok {
+
+		if len(item.SearchFields) >= 1 {
 			var result []string
-			searchFields := processor.ApiSearchFields()
-			for _, f := range searchFields {
+			for _, f := range item.SearchFields {
 				for _, field := range info.FieldList.Fields {
 					if field.Name == f || field.MapName == f {
 						result = append(result, field.MapName)
@@ -66,9 +46,9 @@ func (c *Api) Run() {
 			info.SearchFields = result
 		}
 
-		if enablePrivateAccess {
+		if item.EnablePrivate {
 			for _, field := range info.FieldList.Fields {
-				if field.Name == privateColName {
+				if field.Name == item.PrivateColName {
 					info.TableColName = field.MapName
 					break
 				}
@@ -81,19 +61,13 @@ func (c *Api) Run() {
 		if processor, ok := model.(GlobalPreMiddlewareProcess); ok {
 			api.Use(processor.ApiGlobalPreMiddleware)
 		}
+
 		// 判断是否还有其他中间件
-		if processor, ok := model.(MiddlewareListProcess); ok {
-			midList := processor.ApiMiddleware()
-			api.Use(midList...)
+		if len(item.Middlewares) >= 1 {
+			api.Use(item.Middlewares...)
 		}
 
-		var disableMethods []string
-		// 判断是否设置了禁用方法
-		if processor, ok := model.(DisableMethodsProcess); ok {
-			disableMethods = processor.ApiDisableMethods()
-		}
-
-		if !isContain(disableMethods, "get(all)") {
+		if !isContain(item.DisableMethods, "get(all)") {
 			var route *router.Route
 			// 判断是否覆盖了方法
 			if processor, ok := model.(GetAllProcess); ok {
@@ -106,7 +80,7 @@ func (c *Api) Run() {
 			}
 		}
 
-		if !isContain(disableMethods, "get(single)") {
+		if !isContain(item.DisableMethods, "get(single)") {
 			var route *router.Route
 			// 判断是否覆盖了方法
 			if processor, ok := model.(GetSingleProcess); ok {
@@ -119,7 +93,7 @@ func (c *Api) Run() {
 			}
 		}
 
-		if !isContain(disableMethods, "post") {
+		if !isContain(item.DisableMethods, "post") {
 			var route *router.Route
 			// 判断是否覆盖了方法
 			if processor, ok := model.(PostProcess); ok {
@@ -132,7 +106,7 @@ func (c *Api) Run() {
 			}
 		}
 
-		if !isContain(disableMethods, "put") {
+		if !isContain(item.DisableMethods, "put") {
 			var route *router.Route
 			// 判断是否覆盖了方法
 			if processor, ok := model.(PutProcess); ok {
@@ -145,7 +119,7 @@ func (c *Api) Run() {
 			}
 		}
 
-		if !isContain(disableMethods, "delete") {
+		if !isContain(item.DisableMethods, "delete") {
 			var route *router.Route
 			// 判断是否覆盖了方法
 			if processor, ok := model.(DeleteProcess); ok {
@@ -288,7 +262,7 @@ func (c *Api) getCtxValues(routerName string, ctx iris.Context) (reflect.Value, 
 			}
 			if len(cb.FieldList.Created) >= 1 {
 				var equal = false
-				for k, _ := range cb.FieldList.Created {
+				for k := range cb.FieldList.Created {
 					if column.MapName == k {
 						equal = true
 						break

@@ -1,34 +1,16 @@
 package ab
 
 import "github.com/kataras/iris/v12"
-import "github.com/kataras/iris/v12/context"
 
 // 全局访问中间件 优先级最高
 type GlobalPreMiddlewareProcess interface {
 	ApiGlobalPreMiddleware(ctx iris.Context)
 }
 
-// 中间件列表 优先级第二
-type MiddlewareListProcess interface {
-	ApiMiddleware() []context.Handler
-}
-
 // 私密访问
 type PrivateAccessProcess interface {
-	// 上下文获取私密条件内容的key
-	ApiPrivateContextKey() string
-	// 数据列名
-	ApiPrivateTableColName() string
-}
-
-// 禁止方法生成 默认生成 get(all) get(single) post put delete
-type DisableMethodsProcess interface {
-	ApiDisableMethods() []string
-}
-
-// 搜索字段
-type SearchFieldsProcess interface {
-	ApiSearchFields() []string
+	// 返回上下文key 数据列名
+	ApiPrivate() (string, string)
 }
 
 // 方法单独的中间件

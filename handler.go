@@ -26,8 +26,11 @@ func fastError(err error, ctx iris.Context, msg ...string) {
 	return
 }
 
-// 获取所有 分页 页码用page标识
-
+// GetAllFunc 获取所有
+// page控制页码 page_size控制条数 最大均为100 100页 100条
+// order(asc) order_desc
+// search搜索 __会被替换为% search=__赵日天 sql会替换为 %赵日天
+// filter_[字段名]进行过滤 filter_id=1
 func (c *Api) GetAllFunc(ctx iris.Context) {
 	page := ctx.URLParamIntDefault("page", 1)
 	if page > 100 {
@@ -133,7 +136,7 @@ func (c *Api) GetAllFunc(ctx iris.Context) {
 
 }
 
-// 单个 /{id:uint64}
+// GetSingle 单个 /{id:uint64}
 func (c *Api) GetSingle(ctx iris.Context) {
 	id, err := ctx.Params().GetUint64("id")
 	if err != nil {
@@ -158,7 +161,7 @@ func (c *Api) GetSingle(ctx iris.Context) {
 	_, _ = ctx.JSON(newData)
 }
 
-// 新增数据
+// AddData 新增数据
 func (c *Api) AddData(ctx iris.Context) {
 	model := c.pathGetModel(ctx.Path())
 	newInstance, err := c.getCtxValues(model.MapName, ctx)
@@ -195,7 +198,7 @@ func (c *Api) AddData(ctx iris.Context) {
 	_, _ = ctx.JSON(iris.Map{})
 }
 
-// 编辑数据 /{id:uint64}
+// EditData 编辑数据 /{id:uint64}
 func (c *Api) EditData(ctx iris.Context) {
 	model := c.pathGetModel(ctx.Path())
 	privateName := ctx.Values().Get(model.KeyName)
@@ -256,7 +259,7 @@ func (c *Api) EditData(ctx iris.Context) {
 	_, _ = ctx.JSON(iris.Map{})
 }
 
-// 删除数据 /{id:uint64}
+// DeleteData 删除数据 /{id:uint64}
 func (c *Api) DeleteData(ctx iris.Context) {
 	// 先获取
 	model := c.pathGetModel(ctx.Path())
