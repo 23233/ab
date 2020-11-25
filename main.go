@@ -7,6 +7,7 @@ import (
 	"log"
 	"reflect"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -147,14 +148,16 @@ func (c *Api) pathGetModel(pathName string) modelInfo {
 
 func (c *Api) tableNameReflectFieldsAndTypes(tableName string) TableFieldsResp {
 	for _, item := range c.Config.StructList {
-		if c.Config.Engine.TableName(item) == tableName {
-			modelInfo, err := c.Config.Engine.TableInfo(item)
+		model := item.Model
+		routerName := c.Config.Engine.TableName(model)
+		if routerName == tableName {
+			modelInfo, err := c.Config.Engine.TableInfo(model)
 			if err != nil {
 				return TableFieldsResp{}
 			}
 			var resp TableFieldsResp
 			// 获取三要素
-			values := c.tableNameGetNestedStructMaps(reflect.TypeOf(item))
+			values := c.tableNameGetNestedStructMaps(reflect.TypeOf(model))
 			resp.Fields = values
 			resp.AutoIncrement = modelInfo.AutoIncrement
 			resp.Version = modelInfo.Version
@@ -235,10 +238,12 @@ func (c *Api) tableNameGetModelInfo(tableName string) (modelInfo, error) {
 
 // 获取内容
 func (c *Api) getValue(ctx iris.Context, k string) string {
-	b := ctx.PostValueTrim(k)
+	var b string
+	b = ctx.PostValueTrim(k)
 	if len(b) < 1 {
 		b = ctx.FormValue(k)
 	}
+	b = strings.Trim(b, " ")
 	return b
 }
 
@@ -273,6 +278,9 @@ func (c *Api) getCtxValues(routerName string, ctx iris.Context) (reflect.Value, 
 				}
 			}
 			content := c.getValue(ctx, column.MapName)
+			if len(content) < 1 {
+				continue
+			}
 			switch column.Types {
 			case "string":
 				newInstance.Elem().FieldByName(column.Name).SetString(content)

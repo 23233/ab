@@ -29,7 +29,7 @@ func init() {
 	}
 }
 
-func main() {
+func NewApp() *iris.Application {
 	app := iris.New()
 	app.Logger().SetLevel("debug")
 
@@ -69,7 +69,10 @@ func main() {
 		},
 		Engine: Engine,
 	})
+	return app
+}
 
+func main() {
+	app := NewApp()
 	_ = app.Listen(":8080")
-
 }
