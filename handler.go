@@ -13,7 +13,7 @@ func fastError(err error, ctx iris.Context, msg ...string) {
 	ctx.StatusCode(iris.StatusBadRequest)
 	var m string
 	if err == nil {
-		m = "请求解析出错"
+		m = ctx.Tr("apiParamsParseFail", "请求解析出错")
 	} else {
 		m = err.Error()
 	}
@@ -140,7 +140,7 @@ func (c *Api) GetAllFunc(ctx iris.Context) {
 func (c *Api) GetSingle(ctx iris.Context) {
 	id, err := ctx.Params().GetUint64("id")
 	if err != nil {
-		fastError(err, ctx, "参数错误")
+		fastError(err, ctx)
 		return
 	}
 	model := c.pathGetModel(ctx.Path())
@@ -155,7 +155,7 @@ func (c *Api) GetSingle(ctx iris.Context) {
 	}
 	has, err := base().ID(id).Get(newData)
 	if err != nil || has == false {
-		fastError(err, ctx, "未找到数据")
+		fastError(err, ctx, ctx.Tr("apiNotFoundDataFail", "查询数据失败"))
 		return
 	}
 	_, _ = ctx.JSON(newData)
@@ -183,7 +183,7 @@ func (c *Api) AddData(ctx iris.Context) {
 			private.SetUint(uint64(privateName.(int)))
 			break
 		default:
-			fastError(err, ctx, "私密参数解析错误")
+			fastError(err, ctx, ctx.Tr("apiPrivateParseFail", "私密参数解析错误"))
 			return
 		}
 	}
@@ -192,9 +192,10 @@ func (c *Api) AddData(ctx iris.Context) {
 
 	aff, err := c.Config.Engine.Table(model.MapName).InsertOne(singleData)
 	if err != nil || aff == 0 {
-		fastError(err, ctx, "新增数据失败")
+		fastError(err, ctx, ctx.Tr("apiAddDataFail", "新增数据失败"))
 		return
 	}
+
 	_, _ = ctx.JSON(iris.Map{})
 }
 
@@ -204,7 +205,7 @@ func (c *Api) EditData(ctx iris.Context) {
 	privateName := ctx.Values().Get(model.KeyName)
 	id, err := ctx.Params().GetUint64("id")
 	if err != nil {
-		fastError(err, ctx, "参数错误")
+		fastError(err, ctx)
 		return
 	}
 
@@ -221,7 +222,7 @@ func (c *Api) EditData(ctx iris.Context) {
 		return
 	}
 	if has != true {
-		fastError(err, ctx, "获取数据失败")
+		fastError(err, ctx, ctx.Tr("apiNotFoundDataFail", "查询数据失败"))
 		return
 	}
 	newInstance, err := c.getCtxValues(model.MapName, ctx)
@@ -244,7 +245,7 @@ func (c *Api) EditData(ctx iris.Context) {
 			private.SetUint(uint64(privateName.(int)))
 			break
 		default:
-			fastError(err, ctx, "私密参数解析错误")
+			fastError(err, ctx, ctx.Tr("apiPrivateParseFail", "私密参数解析错误"))
 			return
 		}
 	}
@@ -253,7 +254,7 @@ func (c *Api) EditData(ctx iris.Context) {
 	singleData := newInstance.Interface()
 	aff, err := c.Config.Engine.Table(model.MapName).ID(id).AllCols().Update(singleData)
 	if err != nil || aff < 1 {
-		fastError(err, ctx, "更新数据失败")
+		fastError(err, ctx, ctx.Tr("apiUpdateFail", "更新数据失败"))
 		return
 	}
 	_, _ = ctx.JSON(iris.Map{})
@@ -268,7 +269,7 @@ func (c *Api) DeleteData(ctx iris.Context) {
 	newData := c.newModel(model.MapName)
 
 	if err != nil {
-		fastError(err, ctx, "参数错误")
+		fastError(err, ctx)
 		return
 	}
 	var base = func() *xorm.Session {
@@ -285,13 +286,13 @@ func (c *Api) DeleteData(ctx iris.Context) {
 		return
 	}
 	if has != true {
-		fastError(err, ctx, "获取数据失败")
+		fastError(err, ctx, ctx.Tr("apiNotFoundData", "获取数据失败"))
 		return
 	}
 	// 进行删除
 	aff, err := base().ID(id).Delete(newData)
 	if err != nil || aff < 1 {
-		fastError(err, ctx, "删除数据失败")
+		fastError(err, ctx, ctx.Tr("apiDeleteFail", "删除数据失败"))
 		return
 	}
 	_, _ = ctx.JSON(iris.Map{})
