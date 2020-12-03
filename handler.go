@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/kataras/iris/v12"
 	"github.com/pkg/errors"
+	"strconv"
 	"strings"
 	"xorm.io/xorm"
 )
@@ -172,15 +173,18 @@ func (c *Api) AddData(ctx iris.Context) {
 	if model.Private {
 		privateName := ctx.Values().Get(model.KeyName)
 		private := newInstance.Elem().FieldByName(model.StructColName)
+		c := fmt.Sprintf("%v", privateName)
 		switch private.Type().String() {
 		case "string":
-			private.SetString(privateName.(string))
+			private.SetString(c)
 			break
 		case "int", "int8", "int16", "int32", "int64", "time.Duration":
-			private.SetInt(int64(privateName.(int)))
+			i, _ := strconv.Atoi(c)
+			private.SetInt(int64(i))
 			break
 		case "uint", "uint8", "uint16", "uint32", "uint64":
-			private.SetUint(uint64(privateName.(int)))
+			i, _ := strconv.Atoi(c)
+			private.SetUint(uint64(i))
 			break
 		default:
 			fastError(err, ctx, ctx.Tr("apiPrivateParseFail", "私密参数解析错误"))
@@ -234,15 +238,18 @@ func (c *Api) EditData(ctx iris.Context) {
 	if model.Private {
 		privateName := ctx.Values().Get(model.KeyName)
 		private := newInstance.Elem().FieldByName(model.StructColName)
+		c := fmt.Sprintf("%v", privateName)
 		switch private.Type().String() {
 		case "string":
-			private.SetString(privateName.(string))
+			private.SetString(c)
 			break
 		case "int", "int8", "int16", "int32", "int64", "time.Duration":
-			private.SetInt(int64(privateName.(int)))
+			i, _ := strconv.Atoi(c)
+			private.SetInt(int64(i))
 			break
 		case "uint", "uint8", "uint16", "uint32", "uint64":
-			private.SetUint(uint64(privateName.(int)))
+			i, _ := strconv.Atoi(c)
+			private.SetUint(uint64(i))
 			break
 		default:
 			fastError(err, ctx, ctx.Tr("apiPrivateParseFail", "私密参数解析错误"))
