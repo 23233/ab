@@ -139,7 +139,7 @@ func (c *Api) Run() {
 
 func (c *Api) pathGetModel(pathName string) modelInfo {
 	for _, m := range c.ModelLists {
-		if m.FullPath == pathName {
+		if m.FullPath == pathName || strings.HasPrefix(pathName, m.FullPath) {
 			return m
 		}
 	}
