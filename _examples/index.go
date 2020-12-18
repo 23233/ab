@@ -52,7 +52,11 @@ func NewApp() *iris.Application {
 		Party: v1,
 		StructList: []ab.SingleModel{
 			{
-				Model: new(model.TestModelA),
+				Model:             new(model.TestModelA),
+				GetAllResponse:    new(model.TestModelResp),
+				GetSingleResponse: new(model.TestModelResp),
+				PostResponse:      new(model.TestModelResp),
+				PutResponse:       new(model.TestModelResp),
 			},
 			{
 				Model: new(model.TestModelB),

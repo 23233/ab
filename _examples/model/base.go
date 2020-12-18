@@ -15,7 +15,11 @@ type ModelBase struct {
 
 type TestModelA struct {
 	Id   uint64 `xorm:"autoincr pk unique" json:"id"`
-	Name string `xorm:"varchar(20)" comment:"名称"`
+	Name string `xorm:"varchar(20)" comment:"名称" json:"name"`
+}
+
+type TestModelResp struct {
+	Name string `json:"name"`
 }
 
 func (u *TestModelA) SpAlias() string {

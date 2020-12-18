@@ -6,6 +6,8 @@ github.com/23233/simple_admin v1.5.0 h1:s4VOHvmX2tM8i9qx0wnNp5TnACDqkPaaYXA9EZ0g
 github.com/23233/simple_admin v1.5.0/go.mod h1:jwWVbzKZjfgfE+qJ+RhV5KJFduBSRHjOptnuDkZJ6OA=
 github.com/23233/sv v1.1.1 h1:bdjAlUrMjI8IIS3lqorcPyw/El0oBw6dII9j6IKp++I=
 github.com/23233/sv v1.1.1/go.mod h1:nfyjr6s7DE3j5d29Dn9Qm/RCtQdfP8Wv6SZo7C1jwS0=
+github.com/23233/sv v1.1.2 h1:Rqs1hl/PtfQfH/xVMK/WNyiFf4DUYSSgLgexLUqPWb8=
+github.com/23233/sv v1.1.2/go.mod h1:nfyjr6s7DE3j5d29Dn9Qm/RCtQdfP8Wv6SZo7C1jwS0=
 github.com/AndreasBriese/bbloom v0.0.0-20190306092124-e2d15f34fcf9/go.mod h1:bOvUY6CB00SOBii9/FifXqc0awNKxLFCL/+pkDPuyl8=
 github.com/BurntSushi/toml v0.3.1 h1:WXkYYl6Yr3qBf1K79EBnL4mak0OimBfB0XUf9Vl28OQ=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=

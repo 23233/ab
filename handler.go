@@ -33,6 +33,7 @@ func fastError(err error, ctx iris.Context, msg ...string) {
 // search搜索 __会被替换为% search=__赵日天 sql会替换为 %赵日天
 // filter_[字段名]进行过滤 filter_id=1
 func (c *Api) GetAllFunc(ctx iris.Context) {
+	model := c.pathGetModel(ctx.Path())
 	page := ctx.URLParamIntDefault("page", 1)
 	if page > 100 {
 		page = 100
@@ -41,7 +42,6 @@ func (c *Api) GetAllFunc(ctx iris.Context) {
 	if pageSize > 100 {
 		pageSize = 100
 	}
-	model := c.pathGetModel(ctx.Path())
 
 	// 解析出order by
 	descField := ctx.URLParam("order_desc")
@@ -114,6 +114,26 @@ func (c *Api) GetAllFunc(ctx iris.Context) {
 			return
 		}
 	}
+
+	// 需要转换返回值
+	if model.GetAllResp.Has && len(dataList) > 0 {
+		r := make([]map[string]string, 0, len(dataList))
+		for _, item := range dataList {
+			c := map[string]string{}
+			for k, v := range item {
+				// 遍历字段名
+				for _, field := range model.GetAllResp.Fields {
+					if field.MapName == k {
+						c[k] = v
+						break
+					}
+				}
+			}
+			r = append(r, c)
+		}
+		dataList = r
+	}
+
 	result := iris.Map{
 		"page_size": pageSize,
 		"page":      page,
@@ -134,7 +154,6 @@ func (c *Api) GetAllFunc(ctx iris.Context) {
 	}
 
 	_, _ = ctx.JSON(result)
-
 }
 
 // GetSingle 单个 /{id:uint64}
@@ -159,6 +178,14 @@ func (c *Api) GetSingle(ctx iris.Context) {
 		fastError(err, ctx, ctx.Tr("apiNotFoundDataFail", "查询数据失败"))
 		return
 	}
+
+	// 需要转换返回值
+	if model.GetSingleResp.Has {
+		n := c.newType(model.GetSingleResp.Model)
+		_ = Replace(newData, n)
+		newData = n
+	}
+
 	_, _ = ctx.JSON(newData)
 }
 
@@ -199,8 +226,14 @@ func (c *Api) AddData(ctx iris.Context) {
 		fastError(err, ctx, ctx.Tr("apiAddDataFail", "新增数据失败"))
 		return
 	}
+	// 需要转换返回值
+	if model.PostResp.Has {
+		n := c.newType(model.PostResp.Model)
+		_ = Replace(singleData, n)
+		singleData = n
+	}
 
-	_, _ = ctx.JSON(iris.Map{})
+	_, _ = ctx.JSON(singleData)
 }
 
 // EditData 编辑数据 /{id:uint64}
@@ -264,7 +297,16 @@ func (c *Api) EditData(ctx iris.Context) {
 		fastError(err, ctx, ctx.Tr("apiUpdateFail", "更新数据失败"))
 		return
 	}
-	_, _ = ctx.JSON(iris.Map{})
+
+	// 需要转换返回值
+	if model.PutResp.Has {
+		n := c.newType(model.PutResp.Model)
+		_ = Replace(singleData, n)
+		_, _ = ctx.JSON(n)
+		return
+	}
+
+	_, _ = ctx.JSON(iris.Map{"id": id})
 }
 
 // DeleteData 删除数据 /{id:uint64}
@@ -302,6 +344,14 @@ func (c *Api) DeleteData(ctx iris.Context) {
 		fastError(err, ctx, ctx.Tr("apiDeleteFail", "删除数据失败"))
 		return
 	}
-	_, _ = ctx.JSON(iris.Map{})
+
+	// 需要转换返回值
+	if model.DeleteResp.Has {
+		n := c.newType(model.DeleteResp.Model)
+		_ = Replace(newData, n)
+		_, _ = ctx.JSON(n)
+		return
+	}
+	_, _ = ctx.JSON(iris.Map{"id": id})
 
 }

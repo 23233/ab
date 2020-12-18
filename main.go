@@ -1,8 +1,9 @@
 package ab
 
 import (
+	"github.com/23233/sv"
 	"github.com/kataras/iris/v12"
-	"github.com/kataras/iris/v12/core/router"
+	"github.com/kataras/iris/v12/context"
 	"github.com/pkg/errors"
 	"log"
 	"reflect"
@@ -27,11 +28,46 @@ func (c *Api) Run() {
 		info := modelInfo{
 			MapName:       apiName,
 			Model:         model,
-			Private:       item.EnablePrivate,
+			Private:       len(item.PrivateContextKey) >= 1 && len(item.PrivateColName) >= 1,
 			KeyName:       item.PrivateContextKey,
 			StructColName: item.PrivateColName,
 			FieldList:     c.tableNameReflectFieldsAndTypes(apiName),
 			FullPath:      api.GetRelPath(),
+		}
+		if item.GetAllResponse != nil {
+			info.GetAllResp = respItem{
+				Has:    true,
+				Model:  item.GetAllResponse,
+				Fields: c.tableNameGetNestedStructMaps(reflect.TypeOf(item.GetAllResponse)),
+			}
+		}
+		if item.GetSingleResponse != nil {
+			info.GetSingleResp = respItem{
+				Has:    true,
+				Model:  item.GetSingleResponse,
+				Fields: c.tableNameGetNestedStructMaps(reflect.TypeOf(item.GetSingleResponse)),
+			}
+		}
+		if item.PostResponse != nil {
+			info.PostResp = respItem{
+				Has:    true,
+				Model:  item.PostResponse,
+				Fields: c.tableNameGetNestedStructMaps(reflect.TypeOf(item.PostResponse)),
+			}
+		}
+		if item.PutResponse != nil {
+			info.PutResp = respItem{
+				Has:    true,
+				Model:  item.PutResponse,
+				Fields: c.tableNameGetNestedStructMaps(reflect.TypeOf(item.PutResponse)),
+			}
+		}
+		if item.DeleteResponse != nil {
+			info.DeleteResp = respItem{
+				Has:    true,
+				Model:  item.DeleteResponse,
+				Fields: c.tableNameGetNestedStructMaps(reflect.TypeOf(item.DeleteResponse)),
+			}
 		}
 
 		if len(item.SearchFields) >= 1 {
@@ -47,7 +83,7 @@ func (c *Api) Run() {
 			info.SearchFields = result
 		}
 
-		if item.EnablePrivate {
+		if info.Private {
 			for _, field := range info.FieldList.Fields {
 				if field.Name == item.PrivateColName {
 					info.TableColName = field.MapName
@@ -68,68 +104,73 @@ func (c *Api) Run() {
 			api.Use(item.Middlewares...)
 		}
 
+		// 获取全部方法
 		if !isContain(item.DisableMethods, "get(all)") {
-			var route *router.Route
-			// 判断是否覆盖了方法
-			if processor, ok := model.(GetAllProcess); ok {
-				route = api.Handle("GET", "/", processor.ApiGetAll)
+			var h context.Handler
+			if item.GetAllFunc == nil {
+				h = c.GetAllFunc
 			} else {
-				route = api.Handle("GET", "/", c.GetAllFunc)
+				h = item.GetAllFunc
 			}
-			if processor, ok := model.(GetAllPreMiddlewareProcess); ok {
-				route.Use(processor.ApiGetAllPreMiddleware)
-			}
+			api.Handle("GET", "/", h)
 		}
 
+		// 获取单条
 		if !isContain(item.DisableMethods, "get(single)") {
-			var route *router.Route
-			// 判断是否覆盖了方法
-			if processor, ok := model.(GetSingleProcess); ok {
-				route = api.Handle("GET", "/{id:uint64}", processor.ApiGetSingle)
+			var h context.Handler
+			if item.GetSingleFunc == nil {
+				h = c.GetSingle
 			} else {
-				route = api.Handle("GET", "/{id:uint64}", c.GetSingle)
+				h = item.GetSingleFunc
 			}
-			if processor, ok := model.(GetSinglePreMiddlewareProcess); ok {
-				route.Use(processor.ApiGetSinglePreMiddleware)
-			}
+			api.Handle("GET", "/{id:uint64}", h)
 		}
 
+		// 新增
 		if !isContain(item.DisableMethods, "post") {
-			var route *router.Route
-			// 判断是否覆盖了方法
-			if processor, ok := model.(PostProcess); ok {
-				route = api.Handle("POST", "/", processor.ApiPost)
+
+			var h context.Handler
+			if item.PostFunc == nil {
+				h = c.AddData
 			} else {
-				route = api.Handle("POST", "/", c.AddData)
+				h = item.PostFunc
 			}
-			if processor, ok := model.(PostPreMiddlewareProcess); ok {
-				route.Use(processor.ApiPostPreMiddleware)
+			route := api.Handle("POST", "/", h)
+
+			// 判断是否有自定义验证器
+			if item.PostValidator != nil {
+				route.Use(sv.Run(item.PostValidator))
 			}
 		}
 
+		// 修改
 		if !isContain(item.DisableMethods, "put") {
-			var route *router.Route
-			// 判断是否覆盖了方法
-			if processor, ok := model.(PutProcess); ok {
-				route = api.Handle("PUT", "/{id:uint64}", processor.ApiPut)
+			var h context.Handler
+			if item.PutFunc == nil {
+				h = c.EditData
 			} else {
-				route = api.Handle("PUT", "/{id:uint64}", c.EditData)
+				h = item.PutFunc
 			}
-			if processor, ok := model.(PutPreMiddlewareProcess); ok {
-				route.Use(processor.ApiPutPreMiddleware)
+			route := api.Handle("PUT", "/{id:uint64}", h)
+			// 判断是否有自定义验证器
+			if item.PutValidator != nil {
+				route.Use(sv.Run(item.PutValidator))
 			}
 		}
 
+		// 删除
 		if !isContain(item.DisableMethods, "delete") {
-			var route *router.Route
-			// 判断是否覆盖了方法
-			if processor, ok := model.(DeleteProcess); ok {
-				route = api.Handle("DELETE", "/{id:uint64}", processor.ApiDelete)
+
+			var h context.Handler
+			if item.DeleteFunc == nil {
+				h = c.DeleteData
 			} else {
-				route = api.Handle("DELETE", "/{id:uint64}", c.DeleteData)
+				h = item.DeleteFunc
 			}
-			if processor, ok := model.(PutDeleteMiddlewareProcess); ok {
-				route.Use(processor.ApiDeletePreMiddleware)
+			route := api.Handle("DELETE", "/{id:uint64}", h)
+			// 判断是否有自定义验证器
+			if item.DeleteValidator != nil {
+				route.Use(sv.Run(item.DeleteValidator))
 			}
 		}
 
@@ -342,7 +383,12 @@ func (c *Api) getCtxValues(routerName string, ctx iris.Context) (reflect.Value, 
 // 模型反射一个新
 func (c *Api) newModel(routerName string) interface{} {
 	cb, _ := c.tableNameGetModelInfo(routerName)
-	t := reflect.TypeOf(cb.Model)
+	return c.newType(cb.Model)
+}
+
+// 反射一个新数据
+func (c *Api) newType(input interface{}) interface{} {
+	t := reflect.TypeOf(input)
 	if t.Kind() == reflect.Ptr {
 		t = t.Elem()
 	}
