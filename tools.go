@@ -38,7 +38,7 @@ func filterMatch(fullParams map[string]string, fields []structInfo) map[string]s
 			for _, field := range fields {
 				if field.MapName == strings.Replace(k, "filter_", "", 1) {
 					// 为了安全 长度限制一下
-					if len(v) >= 25 {
+					if len(v) > 64 {
 						break
 					}
 					d[field.MapName] = strings.Trim(v, " ")
