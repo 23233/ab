@@ -12,14 +12,14 @@ import (
 	"time"
 )
 
-func New(c Config) *Api {
-	a := new(Api)
+func New(c Config) *RestApi {
+	a := new(RestApi)
 	a.Config = &c
 	a.Run()
 	return a
 }
 
-func (c *Api) Run() {
+func (c *RestApi) Run() {
 	for _, item := range c.Config.StructList {
 		model := item.Model
 		apiName := c.Config.Engine.TableName(model)
@@ -70,9 +70,9 @@ func (c *Api) Run() {
 			}
 		}
 
-		if len(item.SearchFields) >= 1 {
+		if len(item.AllowSearchFields) >= 1 {
 			var result []string
-			for _, f := range item.SearchFields {
+			for _, f := range item.AllowSearchFields {
 				for _, field := range info.FieldList.Fields {
 					if field.Name == f || field.MapName == f {
 						result = append(result, field.MapName)
@@ -178,7 +178,7 @@ func (c *Api) Run() {
 
 }
 
-func (c *Api) pathGetModel(pathName string) modelInfo {
+func (c *RestApi) pathGetModel(pathName string) modelInfo {
 	for _, m := range c.ModelLists {
 		if m.FullPath == pathName || strings.HasPrefix(pathName, m.FullPath) {
 			return m
@@ -187,7 +187,7 @@ func (c *Api) pathGetModel(pathName string) modelInfo {
 	return modelInfo{}
 }
 
-func (c *Api) tableNameReflectFieldsAndTypes(tableName string) TableFieldsResp {
+func (c *RestApi) tableNameReflectFieldsAndTypes(tableName string) TableFieldsResp {
 	for _, item := range c.Config.StructList {
 		model := item.Model
 		routerName := c.Config.Engine.TableName(model)
@@ -213,7 +213,7 @@ func (c *Api) tableNameReflectFieldsAndTypes(tableName string) TableFieldsResp {
 }
 
 // 通过模型名获取所有列信息 名称 类型 xorm tag validator comment
-func (c *Api) tableNameGetNestedStructMaps(r reflect.Type) []structInfo {
+func (c *RestApi) tableNameGetNestedStructMaps(r reflect.Type) []structInfo {
 	if r.Kind() == reflect.Ptr {
 		r = r.Elem()
 	}
@@ -258,7 +258,7 @@ func (c *Api) tableNameGetNestedStructMaps(r reflect.Type) []structInfo {
 }
 
 // 通过模型名获取实例
-func (c *Api) tableNameGetModel(tableName string) (interface{}, error) {
+func (c *RestApi) tableNameGetModel(tableName string) (interface{}, error) {
 	for _, item := range c.ModelLists {
 		if item.MapName == tableName {
 			return item, nil
@@ -268,7 +268,7 @@ func (c *Api) tableNameGetModel(tableName string) (interface{}, error) {
 }
 
 // 通过模型名获取模型信息
-func (c *Api) tableNameGetModelInfo(tableName string) (modelInfo, error) {
+func (c *RestApi) tableNameGetModelInfo(tableName string) (modelInfo, error) {
 	for _, l := range c.ModelLists {
 		if l.MapName == tableName {
 			return l, nil
@@ -278,7 +278,7 @@ func (c *Api) tableNameGetModelInfo(tableName string) (modelInfo, error) {
 }
 
 // 获取内容
-func (c *Api) getValue(ctx iris.Context, k string) string {
+func (c *RestApi) getValue(ctx iris.Context, k string) string {
 	var b string
 	b = ctx.PostValueTrim(k)
 	if len(b) < 1 {
@@ -289,7 +289,7 @@ func (c *Api) getValue(ctx iris.Context, k string) string {
 }
 
 // 对应关系获取
-func (c *Api) getCtxValues(routerName string, ctx iris.Context) (reflect.Value, error) {
+func (c *RestApi) getCtxValues(routerName string, ctx iris.Context) (reflect.Value, error) {
 	// 先获取到字段信息
 	cb, err := c.tableNameGetModelInfo(routerName)
 	if err != nil {
@@ -381,13 +381,13 @@ func (c *Api) getCtxValues(routerName string, ctx iris.Context) (reflect.Value, 
 }
 
 // 模型反射一个新
-func (c *Api) newModel(routerName string) interface{} {
+func (c *RestApi) newModel(routerName string) interface{} {
 	cb, _ := c.tableNameGetModelInfo(routerName)
 	return c.newType(cb.Model)
 }
 
 // 反射一个新数据
-func (c *Api) newType(input interface{}) interface{} {
+func (c *RestApi) newType(input interface{}) interface{} {
 	t := reflect.TypeOf(input)
 	if t.Kind() == reflect.Ptr {
 		t = t.Elem()

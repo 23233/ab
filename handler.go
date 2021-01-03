@@ -32,7 +32,7 @@ func fastError(err error, ctx iris.Context, msg ...string) {
 // order(asc) order_desc
 // search搜索 __会被替换为% search=__赵日天 sql会替换为 %赵日天
 // filter_[字段名]进行过滤 filter_id=1
-func (c *Api) GetAllFunc(ctx iris.Context) {
+func (c *RestApi) GetAllFunc(ctx iris.Context) {
 	model := c.pathGetModel(ctx.Path())
 	page := ctx.URLParamIntDefault("page", 1)
 	if page > 100 {
@@ -157,7 +157,7 @@ func (c *Api) GetAllFunc(ctx iris.Context) {
 }
 
 // GetSingle 单个 /{id:uint64}
-func (c *Api) GetSingle(ctx iris.Context) {
+func (c *RestApi) GetSingle(ctx iris.Context) {
 	id, err := ctx.Params().GetUint64("id")
 	if err != nil {
 		fastError(err, ctx)
@@ -190,7 +190,7 @@ func (c *Api) GetSingle(ctx iris.Context) {
 }
 
 // AddData 新增数据
-func (c *Api) AddData(ctx iris.Context) {
+func (c *RestApi) AddData(ctx iris.Context) {
 	model := c.pathGetModel(ctx.Path())
 	newInstance, err := c.getCtxValues(model.MapName, ctx)
 	if err != nil {
@@ -237,7 +237,7 @@ func (c *Api) AddData(ctx iris.Context) {
 }
 
 // EditData 编辑数据 /{id:uint64}
-func (c *Api) EditData(ctx iris.Context) {
+func (c *RestApi) EditData(ctx iris.Context) {
 	model := c.pathGetModel(ctx.Path())
 	privateName := ctx.Values().Get(model.KeyName)
 	id, err := ctx.Params().GetUint64("id")
@@ -310,7 +310,7 @@ func (c *Api) EditData(ctx iris.Context) {
 }
 
 // DeleteData 删除数据 /{id:uint64}
-func (c *Api) DeleteData(ctx iris.Context) {
+func (c *RestApi) DeleteData(ctx iris.Context) {
 	// 先获取
 	model := c.pathGetModel(ctx.Path())
 	privateName := ctx.Values().Get(model.KeyName)

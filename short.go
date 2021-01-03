@@ -13,12 +13,13 @@ type SingleModel struct {
 	Prefix             string                 // 路由前缀
 	Suffix             string                 // 路由后缀
 	Model              interface{}            // xorm model
+	model              modelInfo              // model info
 	PrivateContextKey  string                 // 上下文key
 	PrivateColName     string                 // 数据库字段名
 	ExtraFilters       map[string]interface{} //
 	EnableMethods      []string               //
 	DisableMethods     []string               // get(all) get(single) post put delete
-	SearchFields       []string               // 搜索的字段 struct名称
+	AllowSearchFields  []string               // 搜索的字段 struct名称
 	GetAllFunc         func(ctx iris.Context) // 覆盖获取全部方法
 	GetAllResponse     interface{}            // 获取所有返回的内容替换 仅替换data数组 同名替换
 	GetSingleFunc      func(ctx iris.Context) // 覆盖获取单条方法
@@ -82,24 +83,12 @@ type respItem struct {
 }
 
 type modelInfo struct {
-	MapName       string
-	FullPath      string
-	Model         interface{}
-	Private       bool
-	KeyName       string
-	TableColName  string
-	StructColName string
-	FieldList     TableFieldsResp `json:"field_list"`
-	SearchFields  []string
-
-	GetAllResp    respItem
-	GetSingleResp respItem
-	PostResp      respItem
-	PutResp       respItem
-	DeleteResp    respItem
+	MapName   string
+	FullPath  string
+	FieldList TableFieldsResp
 }
 
-type Api struct {
+type RestApi struct {
 	Config     *Config
 	ModelLists []modelInfo
 }
