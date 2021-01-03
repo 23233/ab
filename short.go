@@ -71,8 +71,9 @@ type RedisInstance struct {
 }
 
 type Config struct {
-	Party      iris.Party
-	App        iris.Application
+	IrisInstance
+	MysqlInstance
+	RedisInstance
 	StructList []SingleModel
 }
 
