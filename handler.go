@@ -47,25 +47,26 @@ func (c *RestApi) GetAllFunc(ctx iris.Context) {
 	descField := ctx.URLParam("order_desc")
 	orderBy := ctx.URLParam("order")
 	// 从url中解析出filter
-	filterList := filterMatch(ctx.URLParams(), model.FieldList.Fields)
+	filterList := filterMatch(ctx.URLParams(), model.info.FieldList.Fields)
+	//
 	s := ctx.URLParam("search")
 	search := strings.ReplaceAll(s, "__", "%")
 	if len(search) >= 1 {
-		if len(model.SearchFields) < 1 {
+		if len(model.searchFields) < 1 {
 			fastError(errors.New("搜索功能未启用"), ctx)
 			return
 		}
 	}
 
-	privateName := ctx.Values().Get(model.KeyName)
+	privateName := ctx.Values().Get(model.PrivateContextKey)
 	start := (page - 1) * pageSize
 	end := page * (pageSize * 2)
 
 	var base = func() *xorm.Session {
 		var d *xorm.Session
-		d = c.Config.Engine.Table(model.MapName)
-		if model.Private {
-			d = d.Where(fmt.Sprintf("%s = ?", model.TableColName), privateName)
+		d = c.C.Mdb.Table(model.info.MapName)
+		if model.private {
+			d = d.Where(fmt.Sprintf("%s = ?", model.PrivateColName), privateName)
 		}
 		if len(orderBy) >= 1 {
 			d = d.OrderBy(orderBy)
@@ -78,8 +79,8 @@ func (c *RestApi) GetAllFunc(ctx iris.Context) {
 	where := func() *xorm.Session {
 		var d *xorm.Session
 		d = base()
-		if len(model.FieldList.Deleted) >= 1 {
-			d = base().Where(fmt.Sprintf("%s = ? OR %s IS NULL", model.FieldList.Deleted, model.FieldList.Deleted), "0001-01-01 00:00:00")
+		if len(model.info.FieldList.Deleted) >= 1 {
+			d = base().Where(fmt.Sprintf("%s = ? OR %s IS NULL", model.info.FieldList.Deleted, model.info.FieldList.Deleted), "0001-01-01 00:00:00")
 		}
 		if len(filterList) >= 1 {
 			for k, v := range filterList {
@@ -87,7 +88,7 @@ func (c *RestApi) GetAllFunc(ctx iris.Context) {
 			}
 		}
 		if len(search) >= 1 {
-			for _, s := range model.SearchFields {
+			for _, s := range model.searchFields {
 				d = d.Where(fmt.Sprintf("%s like ?", s), search)
 			}
 		}
@@ -104,8 +105,8 @@ func (c *RestApi) GetAllFunc(ctx iris.Context) {
 	// 获取内容
 	dataList := make([]map[string]string, 0)
 	if allCount >= 1 {
-		if len(model.FieldList.AutoIncrement) >= 1 && len(filterList) < 1 && len(orderBy) < 1 && len(descField) < 1 && len(search) < 1 {
-			dataList, err = where().And(fmt.Sprintf("%s between ? and ?", model.FieldList.AutoIncrement), start, end).Limit(pageSize).QueryString()
+		if len(model.info.FieldList.AutoIncrement) >= 1 && len(filterList) < 1 && len(orderBy) < 1 && len(descField) < 1 && len(search) < 1 {
+			dataList, err = where().And(fmt.Sprintf("%s between ? and ?", model.info.FieldList.AutoIncrement), start, end).Limit(pageSize).QueryString()
 		} else {
 			dataList, err = where().Limit(pageSize, start).QueryString()
 		}
@@ -116,13 +117,13 @@ func (c *RestApi) GetAllFunc(ctx iris.Context) {
 	}
 
 	// 需要转换返回值
-	if model.GetAllResp.Has && len(dataList) > 0 {
+	if model.allResp.Has && len(dataList) > 0 {
 		r := make([]map[string]string, 0, len(dataList))
 		for _, item := range dataList {
 			c := map[string]string{}
 			for k, v := range item {
 				// 遍历字段名
-				for _, field := range model.GetAllResp.Fields {
+				for _, field := range model.allResp.Fields {
 					if field.MapName == k {
 						c[k] = v
 						break
@@ -164,14 +165,14 @@ func (c *RestApi) GetSingle(ctx iris.Context) {
 		return
 	}
 	model := c.pathGetModel(ctx.Path())
-	privateName := ctx.Values().Get(model.KeyName)
-	newData := c.newModel(model.MapName)
+	privateName := ctx.Values().Get(model.PrivateContextKey)
+	newData := c.newModel(model.info.MapName)
 
 	var base = func() *xorm.Session {
-		if model.Private {
-			return c.Config.Engine.Table(newData).Where(fmt.Sprintf("%s = ?", model.TableColName), privateName)
+		if model.private {
+			return c.C.Mdb.Table(newData).Where(fmt.Sprintf("%s = ?", model.PrivateColName), privateName)
 		}
-		return c.Config.Engine.Table(newData)
+		return c.C.Mdb.Table(newData)
 	}
 	has, err := base().ID(id).Get(newData)
 	if err != nil || has == false {
@@ -180,8 +181,8 @@ func (c *RestApi) GetSingle(ctx iris.Context) {
 	}
 
 	// 需要转换返回值
-	if model.GetSingleResp.Has {
-		n := c.newType(model.GetSingleResp.Model)
+	if model.singleResp.Has {
+		n := c.newType(model.singleResp.Instance)
 		_ = Replace(newData, n)
 		newData = n
 	}
@@ -192,14 +193,14 @@ func (c *RestApi) GetSingle(ctx iris.Context) {
 // AddData 新增数据
 func (c *RestApi) AddData(ctx iris.Context) {
 	model := c.pathGetModel(ctx.Path())
-	newInstance, err := c.getCtxValues(model.MapName, ctx)
+	newInstance, err := c.getCtxValues(model.info.MapName, ctx)
 	if err != nil {
 		fastError(err, ctx)
 		return
 	}
-	if model.Private {
-		privateName := ctx.Values().Get(model.KeyName)
-		private := newInstance.Elem().FieldByName(model.StructColName)
+	if model.private {
+		privateName := ctx.Values().Get(model.PrivateContextKey)
+		private := newInstance.Elem().FieldByName(model.PrivateColName)
 		c := fmt.Sprintf("%v", privateName)
 		switch private.Type().String() {
 		case "string":
@@ -221,14 +222,14 @@ func (c *RestApi) AddData(ctx iris.Context) {
 
 	singleData := newInstance.Interface()
 
-	aff, err := c.Config.Engine.Table(model.MapName).InsertOne(singleData)
+	aff, err := c.C.Mdb.Table(model.info.MapName).InsertOne(singleData)
 	if err != nil || aff == 0 {
 		fastError(err, ctx, ctx.Tr("apiAddDataFail", "新增数据失败"))
 		return
 	}
 	// 需要转换返回值
-	if model.PostResp.Has {
-		n := c.newType(model.PostResp.Model)
+	if model.postResp.Has {
+		n := c.newType(model.postResp.Instance)
 		_ = Replace(singleData, n)
 		singleData = n
 	}
@@ -239,7 +240,7 @@ func (c *RestApi) AddData(ctx iris.Context) {
 // EditData 编辑数据 /{id:uint64}
 func (c *RestApi) EditData(ctx iris.Context) {
 	model := c.pathGetModel(ctx.Path())
-	privateName := ctx.Values().Get(model.KeyName)
+	privateName := ctx.Values().Get(model.PrivateContextKey)
 	id, err := ctx.Params().GetUint64("id")
 	if err != nil {
 		fastError(err, ctx)
@@ -247,10 +248,10 @@ func (c *RestApi) EditData(ctx iris.Context) {
 	}
 
 	var base = func() *xorm.Session {
-		if model.Private {
-			return c.Config.Engine.Table(model.MapName).Where(fmt.Sprintf("%s = ?", model.TableColName), privateName)
+		if model.private {
+			return c.C.Mdb.Table(model.info.MapName).Where(fmt.Sprintf("%s = ?", model.PrivateColName), privateName)
 		}
-		return c.Config.Engine.Table(model.MapName)
+		return c.C.Mdb.Table(model.info.MapName)
 	}
 	// 先获取数据是否存在
 	has, err := base().Where("id = ?", id).Exist()
@@ -262,15 +263,15 @@ func (c *RestApi) EditData(ctx iris.Context) {
 		fastError(err, ctx, ctx.Tr("apiNotFoundDataFail", "查询数据失败"))
 		return
 	}
-	newInstance, err := c.getCtxValues(model.MapName, ctx)
+	newInstance, err := c.getCtxValues(model.info.MapName, ctx)
 	if err != nil {
 		fastError(err, ctx)
 		return
 	}
 
-	if model.Private {
-		privateName := ctx.Values().Get(model.KeyName)
-		private := newInstance.Elem().FieldByName(model.StructColName)
+	if model.private {
+		privateName := ctx.Values().Get(model.PrivateContextKey)
+		private := newInstance.Elem().FieldByName(model.PrivateColName)
 		c := fmt.Sprintf("%v", privateName)
 		switch private.Type().String() {
 		case "string":
@@ -292,15 +293,15 @@ func (c *RestApi) EditData(ctx iris.Context) {
 
 	// 全量更新
 	singleData := newInstance.Interface()
-	aff, err := c.Config.Engine.Table(model.MapName).ID(id).AllCols().Update(singleData)
+	aff, err := c.C.Mdb.Table(model.info.MapName).ID(id).AllCols().Update(singleData)
 	if err != nil || aff < 1 {
 		fastError(err, ctx, ctx.Tr("apiUpdateFail", "更新数据失败"))
 		return
 	}
 
 	// 需要转换返回值
-	if model.PutResp.Has {
-		n := c.newType(model.PutResp.Model)
+	if model.putResp.Has {
+		n := c.newType(model.putResp.Instance)
 		_ = Replace(singleData, n)
 		_, _ = ctx.JSON(n)
 		return
@@ -313,19 +314,19 @@ func (c *RestApi) EditData(ctx iris.Context) {
 func (c *RestApi) DeleteData(ctx iris.Context) {
 	// 先获取
 	model := c.pathGetModel(ctx.Path())
-	privateName := ctx.Values().Get(model.KeyName)
+	privateName := ctx.Values().Get(model.PrivateContextKey)
 	id, err := ctx.Params().GetUint64("id")
-	newData := c.newModel(model.MapName)
+	newData := c.newModel(model.info.MapName)
 
 	if err != nil {
 		fastError(err, ctx)
 		return
 	}
 	var base = func() *xorm.Session {
-		if model.Private {
-			return c.Config.Engine.Table(newData).Where(fmt.Sprintf("%s = ?", model.TableColName), privateName)
+		if model.private {
+			return c.C.Mdb.Table(newData).Where(fmt.Sprintf("%s = ?", model.PrivateColName), privateName)
 		}
-		return c.Config.Engine.Table(newData)
+		return c.C.Mdb.Table(newData)
 	}
 	// 先获取数据是否存在
 
@@ -346,8 +347,8 @@ func (c *RestApi) DeleteData(ctx iris.Context) {
 	}
 
 	// 需要转换返回值
-	if model.DeleteResp.Has {
-		n := c.newType(model.DeleteResp.Model)
+	if model.deleteResp.Has {
+		n := c.newType(model.deleteResp.Instance)
 		_ = Replace(newData, n)
 		_, _ = ctx.JSON(n)
 		return

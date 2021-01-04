@@ -12,63 +12,66 @@ import (
 	"time"
 )
 
-func New(c Config) *RestApi {
+func New(c *Config) *RestApi {
 	a := new(RestApi)
-	a.Config = &c
+	a.C = c
+	a.checkConfig()
 	a.Run()
 	return a
 }
 
 func (c *RestApi) Run() {
-	for _, item := range c.Config.StructList {
+	for _, item := range c.C.StructList {
 		model := item.Model
-		apiName := c.Config.Engine.TableName(model)
-		api := c.Config.Party.Party("/" + apiName)
+		apiName := c.C.Mdb.TableName(model)
+		p := "/" + item.Prefix + apiName + item.Suffix
+		api := c.C.Party.Party(p)
 
-		info := modelInfo{
-			MapName:       apiName,
-			Model:         model,
-			Private:       len(item.PrivateContextKey) >= 1 && len(item.PrivateColName) >= 1,
-			KeyName:       item.PrivateContextKey,
-			StructColName: item.PrivateColName,
-			FieldList:     c.tableNameReflectFieldsAndTypes(apiName),
-			FullPath:      api.GetRelPath(),
-		}
+		// resp
 		if item.GetAllResponse != nil {
-			info.GetAllResp = respItem{
-				Has:    true,
-				Model:  item.GetAllResponse,
-				Fields: c.tableNameGetNestedStructMaps(reflect.TypeOf(item.GetAllResponse)),
+			item.allResp = respItem{
+				Has:      true,
+				Instance: item.GetAllResponse,
+				Fields:   c.tableNameGetNestedStructMaps(reflect.TypeOf(item.GetAllResponse)),
 			}
 		}
 		if item.GetSingleResponse != nil {
-			info.GetSingleResp = respItem{
-				Has:    true,
-				Model:  item.GetSingleResponse,
-				Fields: c.tableNameGetNestedStructMaps(reflect.TypeOf(item.GetSingleResponse)),
+			item.singleResp = respItem{
+				Has:      true,
+				Instance: item.GetSingleResponse,
+				Fields:   c.tableNameGetNestedStructMaps(reflect.TypeOf(item.GetSingleResponse)),
 			}
 		}
 		if item.PostResponse != nil {
-			info.PostResp = respItem{
-				Has:    true,
-				Model:  item.PostResponse,
-				Fields: c.tableNameGetNestedStructMaps(reflect.TypeOf(item.PostResponse)),
+			item.postResp = respItem{
+				Has:      true,
+				Instance: item.PostResponse,
+				Fields:   c.tableNameGetNestedStructMaps(reflect.TypeOf(item.PostResponse)),
 			}
 		}
 		if item.PutResponse != nil {
-			info.PutResp = respItem{
-				Has:    true,
-				Model:  item.PutResponse,
-				Fields: c.tableNameGetNestedStructMaps(reflect.TypeOf(item.PutResponse)),
+			item.putResp = respItem{
+				Has:      true,
+				Instance: item.PutResponse,
+				Fields:   c.tableNameGetNestedStructMaps(reflect.TypeOf(item.PutResponse)),
 			}
 		}
 		if item.DeleteResponse != nil {
-			info.DeleteResp = respItem{
-				Has:    true,
-				Model:  item.DeleteResponse,
-				Fields: c.tableNameGetNestedStructMaps(reflect.TypeOf(item.DeleteResponse)),
+			item.deleteResp = respItem{
+				Has:      true,
+				Instance: item.DeleteResponse,
+				Fields:   c.tableNameGetNestedStructMaps(reflect.TypeOf(item.DeleteResponse)),
 			}
 		}
+
+		item.private = len(item.PrivateContextKey) >= 1 && len(item.PrivateColName) >= 1
+
+		info := modelInfo{
+			MapName:   apiName,
+			FieldList: c.tableNameReflectFieldsAndTypes(model),
+			FullPath:  api.GetRelPath(),
+		}
+		item.info = info
 
 		if len(item.AllowSearchFields) >= 1 {
 			var result []string
@@ -80,23 +83,7 @@ func (c *RestApi) Run() {
 					}
 				}
 			}
-			info.SearchFields = result
-		}
-
-		if info.Private {
-			for _, field := range info.FieldList.Fields {
-				if field.Name == item.PrivateColName {
-					info.TableColName = field.MapName
-					break
-				}
-			}
-		}
-
-		c.ModelLists = append(c.ModelLists, info)
-
-		// 判断使用拥有前置访问中间件
-		if processor, ok := model.(GlobalPreMiddlewareProcess); ok {
-			api.Use(processor.ApiGlobalPreMiddleware)
+			item.searchFields = result
 		}
 
 		// 判断是否还有其他中间件
@@ -104,8 +91,11 @@ func (c *RestApi) Run() {
 			api.Use(item.Middlewares...)
 		}
 
+		//
+		methods := item.getMethods()
+
 		// 获取全部方法
-		if !isContain(item.DisableMethods, "get(all)") {
+		if !isContain(methods, "get(all)") {
 			var h context.Handler
 			if item.GetAllFunc == nil {
 				h = c.GetAllFunc
@@ -116,7 +106,7 @@ func (c *RestApi) Run() {
 		}
 
 		// 获取单条
-		if !isContain(item.DisableMethods, "get(single)") {
+		if !isContain(methods, "get(single)") {
 			var h context.Handler
 			if item.GetSingleFunc == nil {
 				h = c.GetSingle
@@ -127,7 +117,7 @@ func (c *RestApi) Run() {
 		}
 
 		// 新增
-		if !isContain(item.DisableMethods, "post") {
+		if !isContain(methods, "post") {
 
 			var h context.Handler
 			if item.PostFunc == nil {
@@ -144,7 +134,7 @@ func (c *RestApi) Run() {
 		}
 
 		// 修改
-		if !isContain(item.DisableMethods, "put") {
+		if !isContain(methods, "put") {
 			var h context.Handler
 			if item.PutFunc == nil {
 				h = c.EditData
@@ -159,7 +149,7 @@ func (c *RestApi) Run() {
 		}
 
 		// 删除
-		if !isContain(item.DisableMethods, "delete") {
+		if !isContain(methods, "delete") {
 
 			var h context.Handler
 			if item.DeleteFunc == nil {
@@ -178,38 +168,30 @@ func (c *RestApi) Run() {
 
 }
 
-func (c *RestApi) pathGetModel(pathName string) modelInfo {
-	for _, m := range c.ModelLists {
-		if m.FullPath == pathName || strings.HasPrefix(pathName, m.FullPath) {
+func (c *RestApi) pathGetModel(pathName string) SingleModel {
+	for _, m := range c.C.StructList {
+		if m.info.FullPath == pathName || strings.HasPrefix(pathName, m.info.FullPath) {
 			return m
 		}
 	}
-	return modelInfo{}
+	return SingleModel{}
 }
 
-func (c *RestApi) tableNameReflectFieldsAndTypes(tableName string) TableFieldsResp {
-	for _, item := range c.Config.StructList {
-		model := item.Model
-		routerName := c.Config.Engine.TableName(model)
-		if routerName == tableName {
-			modelInfo, err := c.Config.Engine.TableInfo(model)
-			if err != nil {
-				return TableFieldsResp{}
-			}
-			var resp TableFieldsResp
-			// 获取三要素
-			values := c.tableNameGetNestedStructMaps(reflect.TypeOf(model))
-			resp.Fields = values
-			resp.AutoIncrement = modelInfo.AutoIncrement
-			resp.Version = modelInfo.Version
-			resp.Deleted = modelInfo.Deleted
-			resp.Created = modelInfo.Created
-			resp.Updated = modelInfo.Updated
-			return resp
-		}
+func (c *RestApi) tableNameReflectFieldsAndTypes(table interface{}) tableFieldsResp {
+	modelInfo, err := c.C.Mdb.TableInfo(table)
+	if err != nil {
+		return tableFieldsResp{}
 	}
-	return TableFieldsResp{}
-
+	var resp tableFieldsResp
+	// 获取三要素
+	values := c.tableNameGetNestedStructMaps(reflect.TypeOf(table))
+	resp.Fields = values
+	resp.AutoIncrement = modelInfo.AutoIncrement
+	resp.Version = modelInfo.Version
+	resp.Deleted = modelInfo.Deleted
+	resp.Created = modelInfo.Created
+	resp.Updated = modelInfo.Updated
+	return resp
 }
 
 // 通过模型名获取所有列信息 名称 类型 xorm tag validator comment
@@ -236,7 +218,7 @@ func (c *RestApi) tableNameGetNestedStructMaps(r reflect.Type) []structInfo {
 			d.ValidateTags = field.Tag.Get("validate")
 			d.CommentTags = field.Tag.Get("comment")
 			d.AttrTags = field.Tag.Get("attr")
-			d.MapName = c.Config.Engine.GetColumnMapper().Obj2Table(field.Name)
+			d.MapName = c.C.Mdb.GetColumnMapper().Obj2Table(field.Name)
 			result = append(result, d)
 			continue
 		}
@@ -247,7 +229,7 @@ func (c *RestApi) tableNameGetNestedStructMaps(r reflect.Type) []structInfo {
 		}
 		d.Name = field.Name
 		d.Types = field.Type.String()
-		d.MapName = c.Config.Engine.GetColumnMapper().Obj2Table(field.Name)
+		d.MapName = c.C.Mdb.GetColumnMapper().Obj2Table(field.Name)
 		d.XormTags = field.Tag.Get("xorm")
 		d.CommentTags = field.Tag.Get("comment")
 		d.AttrTags = field.Tag.Get("attr")
@@ -259,22 +241,22 @@ func (c *RestApi) tableNameGetNestedStructMaps(r reflect.Type) []structInfo {
 
 // 通过模型名获取实例
 func (c *RestApi) tableNameGetModel(tableName string) (interface{}, error) {
-	for _, item := range c.ModelLists {
-		if item.MapName == tableName {
-			return item, nil
+	for _, item := range c.C.StructList {
+		if item.info.MapName == tableName {
+			return item.Model, nil
 		}
 	}
 	return nil, errors.New("未找到模型")
 }
 
 // 通过模型名获取模型信息
-func (c *RestApi) tableNameGetModelInfo(tableName string) (modelInfo, error) {
-	for _, l := range c.ModelLists {
-		if l.MapName == tableName {
+func (c *RestApi) tableNameGetModelInfo(tableName string) (SingleModel, error) {
+	for _, l := range c.C.StructList {
+		if l.info.MapName == tableName {
 			return l, nil
 		}
 	}
-	return modelInfo{}, errors.New("未找到模型")
+	return SingleModel{}, errors.New("未找到模型")
 }
 
 // 获取内容
@@ -301,14 +283,16 @@ func (c *RestApi) getCtxValues(routerName string, ctx iris.Context) (reflect.Val
 	}
 	newInstance := reflect.New(t)
 
-	for _, column := range cb.FieldList.Fields {
-		if column.MapName != cb.FieldList.AutoIncrement {
-			if column.MapName == cb.FieldList.Updated || column.MapName == cb.FieldList.Deleted {
+	fields := cb.info.FieldList
+
+	for _, column := range fields.Fields {
+		if column.MapName != fields.AutoIncrement {
+			if column.MapName == fields.Updated || column.MapName == fields.Deleted {
 				continue
 			}
-			if len(cb.FieldList.Created) >= 1 {
+			if len(fields.Created) >= 1 {
 				var equal = false
-				for k := range cb.FieldList.Created {
+				for k := range fields.Created {
 					if column.MapName == k {
 						equal = true
 						break
