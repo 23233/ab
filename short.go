@@ -43,9 +43,10 @@ type SingleModel struct {
 	DeleteValidator    interface{}            // 删除验证器
 	DeleteResponse     interface{}            // 删除返回内容
 	deleteResp         respItem               //
-	CacheTime          time.Time              //
-	GetAllCacheTime    time.Time              //
-	GetSingleCacheTime time.Time              //
+	CacheTime          time.Duration          //
+	GetAllCacheTime    time.Duration          //
+	GetSingleCacheTime time.Duration          //
+	DelayDeleteTime    time.Duration          // 延迟多久双删
 	MaxPageSize        int                    //
 	MaxPageCount       int                    //
 }
@@ -89,6 +90,24 @@ func (c *SingleModel) getPage() (int, int) {
 		maxPageSize = 100
 	}
 	return maxPageCount, maxPageSize
+}
+func (c *SingleModel) getDelayDeleteTime() time.Duration {
+	if c.DelayDeleteTime >= 1 {
+		return c.DelayDeleteTime
+	}
+	return 500 * time.Millisecond
+}
+func (c *SingleModel) getAllListCacheTime() time.Duration {
+	if c.GetAllCacheTime >= 1 {
+		return c.GetAllCacheTime
+	}
+	return c.CacheTime
+}
+func (c *SingleModel) getSingleCacheTime() time.Duration {
+	if c.GetSingleCacheTime >= 1 {
+		return c.GetSingleCacheTime
+	}
+	return c.CacheTime
 }
 
 type MysqlConfig struct {

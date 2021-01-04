@@ -28,7 +28,7 @@ func (c *RestApi) Run() {
 		p := strings.Join([]string{"/", item.Prefix, apiName, item.Suffix}, "")
 		api := c.C.Party.Party(p)
 
-		// resp
+		// resp解析
 		if item.GetAllResponse != nil {
 			item.allResp = respItem{
 				Has:      true,
@@ -92,10 +92,10 @@ func (c *RestApi) Run() {
 			api.Use(item.Middlewares...)
 		}
 
-		//
+		// 获取所有方法
 		methods := item.getMethods()
 
-		// 获取全部方法
+		// 获取全部列表
 		if !isContain(methods, "get(all)") {
 			var h context.Handler
 			if item.GetAllFunc == nil {
@@ -103,7 +103,10 @@ func (c *RestApi) Run() {
 			} else {
 				h = item.GetAllFunc
 			}
-			api.Handle("GET", "/", h)
+			r := api.Handle("GET", "/", h)
+			if item.CacheTime >= 1 || item.GetAllCacheTime >= 1 {
+				r.Use(c.getCacheMiddleware)
+			}
 		}
 
 		// 获取单条
@@ -114,7 +117,10 @@ func (c *RestApi) Run() {
 			} else {
 				h = item.GetSingleFunc
 			}
-			api.Handle("GET", "/{id:uint64}", h)
+			r := api.Handle("GET", "/{id:uint64}", h)
+			if item.CacheTime >= 1 || item.GetSingleCacheTime >= 1 {
+				r.Use(c.getCacheMiddleware)
+			}
 		}
 
 		// 新增
@@ -169,6 +175,7 @@ func (c *RestApi) Run() {
 
 }
 
+// 通过路径获取对应的模型信息
 func (c *RestApi) pathGetModel(pathName string) SingleModel {
 	for _, m := range c.C.StructList {
 		if m.info.FullPath == pathName || strings.HasPrefix(pathName, m.info.FullPath) {

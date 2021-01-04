@@ -7,23 +7,31 @@
 * filter_[字段名] 进行过滤 filter_id=1 最长64位请注意
 
 #### 限制
+
 * 目前不支持header为json的请求 只能是form 受限于iris解析
 
 #### new version
+
 * support read write split , use mysql storage and redis read!
 * custom set cache time , hot point set 1 hour cache time .
 
 #### process
+
 * read
+
 ```
 fetch -> redis -> has -> return
 fetch -> redis -> not has -> mysql -> save to redis -> return
 ```
+
 * update
+
 ```
-req -> delete redis item -> mysql -> lazy(500ms) delete redis item
+req -> delete redis item -> mysql -> lazy(nms) delete redis item
 ```
+
 * delete
+
 ```
 req -> mysql -> delete redis item
 ```

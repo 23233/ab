@@ -2,10 +2,13 @@ package ab
 
 import (
 	"fmt"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/kataras/iris/v12"
+	"github.com/kataras/iris/v12/sessions/sessiondb/redis"
 	"github.com/pkg/errors"
 	"strconv"
 	"strings"
+	"time"
 	"xorm.io/xorm"
 )
 
@@ -59,7 +62,7 @@ func (c *RestApi) GetAllFunc(ctx iris.Context) {
 		}
 	}
 
-	privateName := ctx.Values().Get(model.PrivateContextKey)
+	privateValue := ctx.Values().Get(model.PrivateContextKey)
 	start := (page - 1) * pageSize
 	end := page * (pageSize * 2)
 
@@ -67,7 +70,7 @@ func (c *RestApi) GetAllFunc(ctx iris.Context) {
 		var d *xorm.Session
 		d = c.C.Mdb.Table(model.info.MapName)
 		if model.private {
-			d = d.Where(fmt.Sprintf("%s = ?", model.PrivateColName), privateName)
+			d = d.Where(fmt.Sprintf("%s = ?", model.PrivateColName), privateValue)
 		}
 		if len(orderBy) >= 1 {
 			d = d.OrderBy(orderBy)
@@ -155,6 +158,21 @@ func (c *RestApi) GetAllFunc(ctx iris.Context) {
 		result["search"] = s
 	}
 
+	// 如果启用了缓存
+	if model.getAllListCacheTime() >= 1 {
+		// 生成key
+		rKey := genRedisKey(ctx.Request().RequestURI, model.PrivateColName, fmt.Sprintf("%v", privateValue))
+		// 保存结果
+		resp, err := jsoniter.MarshalToString(result)
+		if err != nil {
+			// todo redis错误处理
+		}
+		err = c.saveToRedis(ctx.Request().Context(), rKey, resp, model.getAllListCacheTime())
+		if err != nil {
+			// todo redis保存错误处理
+		}
+	}
+
 	_, _ = ctx.JSON(result)
 }
 
@@ -166,12 +184,12 @@ func (c *RestApi) GetSingle(ctx iris.Context) {
 		return
 	}
 	model := c.pathGetModel(ctx.Path())
-	privateName := ctx.Values().Get(model.PrivateContextKey)
+	privateValue := ctx.Values().Get(model.PrivateContextKey)
 	newData := c.newModel(model.info.MapName)
 
 	var base = func() *xorm.Session {
 		if model.private {
-			return c.C.Mdb.Table(newData).Where(fmt.Sprintf("%s = ?", model.PrivateColName), privateName)
+			return c.C.Mdb.Table(newData).Where(fmt.Sprintf("%s = ?", model.PrivateColName), privateValue)
 		}
 		return c.C.Mdb.Table(newData)
 	}
@@ -186,6 +204,21 @@ func (c *RestApi) GetSingle(ctx iris.Context) {
 		n := c.newType(model.singleResp.Instance)
 		_ = Replace(newData, n)
 		newData = n
+	}
+
+	// 如果启用了缓存
+	if model.getSingleCacheTime() >= 1 {
+		// 生成key
+		rKey := genRedisKey(ctx.Request().RequestURI, model.PrivateColName, fmt.Sprintf("%v", privateValue))
+		// 保存结果
+		resp, err := jsoniter.MarshalToString(newData)
+		if err != nil {
+			// todo redis错误处理
+		}
+		err = c.saveToRedis(ctx.Request().Context(), rKey, resp, model.getSingleCacheTime())
+		if err != nil {
+			// todo redis保存错误处理
+		}
 	}
 
 	_, _ = ctx.JSON(newData)
@@ -241,7 +274,7 @@ func (c *RestApi) AddData(ctx iris.Context) {
 // EditData 编辑数据 /{id:uint64}
 func (c *RestApi) EditData(ctx iris.Context) {
 	model := c.pathGetModel(ctx.Path())
-	privateName := ctx.Values().Get(model.PrivateContextKey)
+	privateValue := ctx.Values().Get(model.PrivateContextKey)
 	id, err := ctx.Params().GetUint64("id")
 	if err != nil {
 		fastError(err, ctx)
@@ -250,7 +283,7 @@ func (c *RestApi) EditData(ctx iris.Context) {
 
 	var base = func() *xorm.Session {
 		if model.private {
-			return c.C.Mdb.Table(model.info.MapName).Where(fmt.Sprintf("%s = ?", model.PrivateColName), privateName)
+			return c.C.Mdb.Table(model.info.MapName).Where(fmt.Sprintf("%s = ?", model.PrivateColName), privateValue)
 		}
 		return c.C.Mdb.Table(model.info.MapName)
 	}
@@ -271,9 +304,8 @@ func (c *RestApi) EditData(ctx iris.Context) {
 	}
 
 	if model.private {
-		privateName := ctx.Values().Get(model.PrivateContextKey)
 		private := newInstance.Elem().FieldByName(model.PrivateColName)
-		c := fmt.Sprintf("%v", privateName)
+		c := fmt.Sprintf("%v", privateValue)
 		switch private.Type().String() {
 		case "string":
 			private.SetString(c)
@@ -292,12 +324,32 @@ func (c *RestApi) EditData(ctx iris.Context) {
 		}
 	}
 
+	// 更新之前判断是否启用缓存
+	if model.getSingleCacheTime() >= 1 {
+		// 删除缓存
+		rKey := genRedisKey(ctx.Request().RequestURI, model.PrivateColName, fmt.Sprintf("%v", privateValue))
+		err := c.deleteToRedis(ctx.Request().Context(), rKey)
+		if err != nil {
+			// todo redis删除缓存出错
+		}
+	}
+
 	// 全量更新
 	singleData := newInstance.Interface()
 	aff, err := c.C.Mdb.Table(model.info.MapName).ID(id).AllCols().Update(singleData)
 	if err != nil || aff < 1 {
 		fastError(err, ctx, ctx.Tr("apiUpdateFail", "更新数据失败"))
 		return
+	}
+
+	// 再次删除缓存 双删确保安全
+	if model.getSingleCacheTime() >= 1 {
+		go func() {
+			time.Sleep(model.getDelayDeleteTime())
+			// 再次删除缓存 不保证结果
+			rKey := genRedisKey(ctx.Request().RequestURI, model.PrivateColName, fmt.Sprintf("%v", privateValue))
+			_ = c.deleteToRedis(ctx.Request().Context(), rKey)
+		}()
 	}
 
 	// 需要转换返回值
@@ -315,7 +367,7 @@ func (c *RestApi) EditData(ctx iris.Context) {
 func (c *RestApi) DeleteData(ctx iris.Context) {
 	// 先获取
 	model := c.pathGetModel(ctx.Path())
-	privateName := ctx.Values().Get(model.PrivateContextKey)
+	privateValue := ctx.Values().Get(model.PrivateContextKey)
 	id, err := ctx.Params().GetUint64("id")
 	newData := c.newModel(model.info.MapName)
 
@@ -325,7 +377,7 @@ func (c *RestApi) DeleteData(ctx iris.Context) {
 	}
 	var base = func() *xorm.Session {
 		if model.private {
-			return c.C.Mdb.Table(newData).Where(fmt.Sprintf("%s = ?", model.PrivateColName), privateName)
+			return c.C.Mdb.Table(newData).Where(fmt.Sprintf("%s = ?", model.PrivateColName), privateValue)
 		}
 		return c.C.Mdb.Table(newData)
 	}
@@ -347,6 +399,16 @@ func (c *RestApi) DeleteData(ctx iris.Context) {
 		return
 	}
 
+	// 删除key
+	if model.getSingleCacheTime() >= 1 {
+		// 删除缓存
+		rKey := genRedisKey(ctx.Request().RequestURI, model.PrivateColName, fmt.Sprintf("%v", privateValue))
+		err := c.deleteToRedis(ctx.Request().Context(), rKey)
+		if err != nil {
+			// todo redis删除缓存出错
+		}
+	}
+
 	// 需要转换返回值
 	if model.deleteResp.Has {
 		n := c.newType(model.deleteResp.Instance)
@@ -358,4 +420,33 @@ func (c *RestApi) DeleteData(ctx iris.Context) {
 
 }
 
-// get redis middleware :
+// 获取数据的中间件
+func (c *RestApi) getCacheMiddleware(ctx iris.Context) {
+	model := c.pathGetModel(ctx.Path())
+	// 判断header中 Cache-control
+	cacheHeader := ctx.GetHeader("Cache-control")
+	if cacheHeader == "no-cache" {
+		ctx.Next()
+		return
+	}
+	privateValue := ctx.Values().Get(model.PrivateContextKey)
+	// 获取参数 生成key
+	rKey := genRedisKey(ctx.Request().RequestURI, model.PrivateColName, fmt.Sprintf("%v", privateValue))
+	// 获取缓存内容
+	resp, err := c.C.Rdb.Get(ctx.Request().Context(), rKey).Result()
+	if err != nil {
+		if err != redis.ErrKeyNotFound {
+			// todo redis错误处理
+		}
+		ctx.Next()
+	}
+	// 返回数据
+	result := map[string]interface{}{}
+	err = jsoniter.UnmarshalFromString(resp, &result)
+	if err != nil {
+		// todo json错误
+		ctx.Next()
+	}
+	_, _ = ctx.JSON(result)
+	return
+}
