@@ -324,7 +324,7 @@ func (c *RestApi) EditData(ctx iris.Context) {
 		}
 	}
 
-	// 更新之前判断是否启用缓存
+	// 更新之前先删除一次key
 	if model.getSingleCacheTime() >= 1 {
 		// 删除缓存
 		rKey := genRedisKey(ctx.Request().RequestURI, model.PrivateColName, fmt.Sprintf("%v", privateValue))
