@@ -46,6 +46,8 @@ type SingleModel struct {
 	CacheTime          time.Time              //
 	GetAllCacheTime    time.Time              //
 	GetSingleCacheTime time.Time              //
+	MaxPageSize        int                    //
+	MaxPageCount       int                    //
 }
 
 func (c *SingleModel) getMethods() []string {
@@ -76,6 +78,17 @@ func (c *SingleModel) initMethods() map[string]string {
 		"put":         "put",
 		"delete":      "delete",
 	}
+}
+func (c *SingleModel) getPage() (int, int) {
+	maxPageCount := c.MaxPageCount
+	if maxPageCount < 1 {
+		maxPageCount = 100
+	}
+	maxPageSize := c.MaxPageSize
+	if maxPageSize < 1 {
+		maxPageSize = 100
+	}
+	return maxPageCount, maxPageSize
 }
 
 type MysqlConfig struct {

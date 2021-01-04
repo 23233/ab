@@ -35,12 +35,13 @@ func fastError(err error, ctx iris.Context, msg ...string) {
 func (c *RestApi) GetAllFunc(ctx iris.Context) {
 	model := c.pathGetModel(ctx.Path())
 	page := ctx.URLParamIntDefault("page", 1)
-	if page > 100 {
-		page = 100
+	maxCount, maxSize := model.getPage()
+	if page > maxCount {
+		page = maxCount
 	}
 	pageSize := ctx.URLParamIntDefault("page_size", 20)
-	if pageSize > 100 {
-		pageSize = 100
+	if pageSize > maxSize {
+		pageSize = maxSize
 	}
 
 	// 解析出order by
@@ -356,3 +357,5 @@ func (c *RestApi) DeleteData(ctx iris.Context) {
 	_, _ = ctx.JSON(iris.Map{"id": id})
 
 }
+
+// get redis middleware :
