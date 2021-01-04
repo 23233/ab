@@ -24,7 +24,8 @@ func (c *RestApi) Run() {
 	for _, item := range c.C.StructList {
 		model := item.Model
 		apiName := c.C.Mdb.TableName(model)
-		p := "/" + item.Prefix + apiName + item.Suffix
+		// 拼接效率高
+		p := strings.Join([]string{"/", item.Prefix, apiName, item.Suffix}, "")
 		api := c.C.Party.Party(p)
 
 		// resp
