@@ -67,7 +67,7 @@ func (c *SingleModel) getMethods() []string {
 			}
 		}
 	}
-	result := make([]string, len(m))
+	result := make([]string, 0, len(m))
 	for k := range m {
 		result = append(result, k)
 	}

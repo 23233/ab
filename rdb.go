@@ -15,7 +15,7 @@ import (
 // genRedisKey 生成redis存储的key 尽量的短 所以使用 xxhash后进行base62
 // 生成key需要的参数为 所有请求参数与额外参数 额外参数可以为用户id等
 func genRedisKey(ReqParams string, otherInfo ...string) string {
-	d := make([]string, 1+len(otherInfo))
+	d := make([]string, 0, 1+len(otherInfo))
 	d = append(d, ReqParams)
 	d = append(d, otherInfo...)
 	origin := strings.Join(d, "")
