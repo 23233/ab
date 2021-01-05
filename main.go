@@ -105,7 +105,7 @@ func (c *RestApi) Run() {
 			}
 			r := api.Handle("GET", "/", h)
 			if item.CacheTime >= 1 || item.GetAllCacheTime >= 1 {
-				r.Use(c.getCacheMiddleware)
+				r.Use(c.getCacheMiddleware("list"))
 			}
 		}
 
@@ -119,7 +119,7 @@ func (c *RestApi) Run() {
 			}
 			r := api.Handle("GET", "/{id:uint64}", h)
 			if item.CacheTime >= 1 || item.GetSingleCacheTime >= 1 {
-				r.Use(c.getCacheMiddleware)
+				r.Use(c.getCacheMiddleware("single"))
 			}
 		}
 

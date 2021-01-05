@@ -7,6 +7,7 @@ import (
 	"github.com/kataras/iris/v12"
 	"github.com/kataras/iris/v12/context"
 	"github.com/pkg/errors"
+	"strings"
 	"time"
 	"xorm.io/xorm"
 )
@@ -20,16 +21,17 @@ type SingleModel struct {
 	private            bool                   //
 	PrivateContextKey  string                 // 上下文key
 	PrivateColName     string                 // 数据库字段名
-	ExtraFilters       map[string]interface{} //
 	AllowMethods       []string               //
 	DisableMethods     []string               // get(all) get(single) post put delete
 	AllowSearchFields  []string               // 搜索的字段 struct名称
 	searchFields       []string               //
 	GetAllFunc         func(ctx iris.Context) // 覆盖获取全部方法
 	GetAllResponse     interface{}            // 获取所有返回的内容替换 仅替换data数组 同名替换
+	GetAllExtraFilters map[string]string      // 额外的固定过滤 key(数据库列名) 和 value 若与请求过滤重复则覆盖 优先级最高
 	allResp            respItem               //
 	GetSingleFunc      func(ctx iris.Context) // 覆盖获取单条方法
 	GetSingleResponse  interface{}            // 获取单个返回的内容替换
+	SingleExtraFilters map[string]string      // 额外的固定过滤 key(数据库列名) 和 value 若与请求过滤重复则覆盖 优先级最高
 	singleResp         respItem               //
 	PostFunc           func(ctx iris.Context) // 覆盖新增方法
 	PostValidator      interface{}            // 新增自定义验证器
@@ -51,6 +53,7 @@ type SingleModel struct {
 	MaxPageCount       int                    //
 }
 
+// getMethods 初始化请求方法 返回数组
 func (c *SingleModel) getMethods() []string {
 	if len(c.AllowMethods) >= 1 {
 		return c.AllowMethods
@@ -70,6 +73,8 @@ func (c *SingleModel) getMethods() []string {
 	}
 	return result
 }
+
+// initMethods 初始化请求方法 返回map
 func (c *SingleModel) initMethods() map[string]string {
 	// get(all) get(single) post put delete
 	return map[string]string{
@@ -80,6 +85,8 @@ func (c *SingleModel) initMethods() map[string]string {
 		"delete":      "delete",
 	}
 }
+
+// getPage 获取最大限制的页码和每页数量
 func (c *SingleModel) getPage() (int, int) {
 	maxPageCount := c.MaxPageCount
 	if maxPageCount < 1 {
@@ -91,23 +98,47 @@ func (c *SingleModel) getPage() (int, int) {
 	}
 	return maxPageCount, maxPageSize
 }
+
+// getDelayDeleteTime 获取延迟删除时间
 func (c *SingleModel) getDelayDeleteTime() time.Duration {
 	if c.DelayDeleteTime >= 1 {
 		return c.DelayDeleteTime
 	}
 	return 500 * time.Millisecond
 }
+
+// getAllListCacheTime 获取列表缓存时间
 func (c *SingleModel) getAllListCacheTime() time.Duration {
 	if c.GetAllCacheTime >= 1 {
 		return c.GetAllCacheTime
 	}
 	return c.CacheTime
 }
+
+// getSingleCacheTime 获取单条缓存时间
 func (c *SingleModel) getSingleCacheTime() time.Duration {
 	if c.GetSingleCacheTime >= 1 {
 		return c.GetSingleCacheTime
 	}
 	return c.CacheTime
+}
+
+// getAllExtraParams 额外参数解析成url形式
+func (c *SingleModel) getAllExtraParams() string {
+	var s strings.Builder
+	for k, v := range c.GetAllExtraFilters {
+		s.WriteString(fmt.Sprintf("%s=%s", k, v))
+	}
+	return s.String()
+}
+
+// getSingleExtraParams 额外参数解析成url形式
+func (c *SingleModel) getSingleExtraParams() string {
+	var s strings.Builder
+	for k, v := range c.SingleExtraFilters {
+		s.WriteString(fmt.Sprintf("%s=%s", k, v))
+	}
+	return s.String()
 }
 
 type MysqlConfig struct {

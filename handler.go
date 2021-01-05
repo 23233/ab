@@ -52,7 +52,6 @@ func (c *RestApi) GetAllFunc(ctx iris.Context) {
 	orderBy := ctx.URLParam("order")
 	// 从url中解析出filter
 	filterList := filterMatch(ctx.URLParams(), model.info.FieldList.Fields)
-	//
 	s := ctx.URLParam("search")
 	search := strings.ReplaceAll(s, "__", "%")
 	if len(search) >= 1 {
@@ -88,6 +87,12 @@ func (c *RestApi) GetAllFunc(ctx iris.Context) {
 		}
 		if len(filterList) >= 1 {
 			for k, v := range filterList {
+				d = d.Where(fmt.Sprintf("%s = ?", k), v)
+			}
+		}
+		// 额外附加字段
+		if len(model.GetAllExtraFilters) >= 1 {
+			for k, v := range model.GetAllExtraFilters {
 				d = d.Where(fmt.Sprintf("%s = ?", k), v)
 			}
 		}
@@ -160,8 +165,9 @@ func (c *RestApi) GetAllFunc(ctx iris.Context) {
 
 	// 如果启用了缓存
 	if model.getAllListCacheTime() >= 1 {
+
 		// 生成key
-		rKey := genRedisKey(ctx.Request().RequestURI, model.PrivateColName, fmt.Sprintf("%v", privateValue))
+		rKey := genRedisKey(ctx.Request().RequestURI, model.PrivateColName, fmt.Sprintf("%v", privateValue), model.getAllExtraParams())
 		// 保存结果
 		resp, err := jsoniter.MarshalToString(result)
 		if err != nil {
@@ -209,7 +215,7 @@ func (c *RestApi) GetSingle(ctx iris.Context) {
 	// 如果启用了缓存
 	if model.getSingleCacheTime() >= 1 {
 		// 生成key
-		rKey := genRedisKey(ctx.Request().RequestURI, model.PrivateColName, fmt.Sprintf("%v", privateValue))
+		rKey := genRedisKey(ctx.Request().RequestURI, model.PrivateColName, fmt.Sprintf("%v", privateValue), model.getSingleExtraParams())
 		// 保存结果
 		resp, err := jsoniter.MarshalToString(newData)
 		if err != nil {
@@ -421,32 +427,40 @@ func (c *RestApi) DeleteData(ctx iris.Context) {
 }
 
 // 获取数据的中间件
-func (c *RestApi) getCacheMiddleware(ctx iris.Context) {
-	model := c.pathGetModel(ctx.Path())
-	// 判断header中 Cache-control
-	cacheHeader := ctx.GetHeader("Cache-control")
-	if cacheHeader == "no-cache" {
-		ctx.Next()
+func (c *RestApi) getCacheMiddleware(from string) iris.Handler {
+	return func(ctx iris.Context) {
+		model := c.pathGetModel(ctx.Path())
+		// 判断header中 Cache-control
+		cacheHeader := ctx.GetHeader("Cache-control")
+		if cacheHeader == "no-cache" {
+			ctx.Next()
+			return
+		}
+		privateValue := ctx.Values().Get(model.PrivateContextKey)
+		var extraParams string
+		if from == "list" {
+			extraParams = model.getAllExtraParams()
+		} else {
+			extraParams = model.getSingleExtraParams()
+		}
+		// 获取参数 生成key
+		rKey := genRedisKey(ctx.Request().RequestURI, model.PrivateColName, fmt.Sprintf("%v", privateValue), extraParams)
+		// 获取缓存内容
+		resp, err := c.C.Rdb.Get(ctx.Request().Context(), rKey).Result()
+		if err != nil {
+			if err != redis.ErrKeyNotFound {
+				// todo redis错误处理
+			}
+			ctx.Next()
+		}
+		// 返回数据
+		result := map[string]interface{}{}
+		err = jsoniter.UnmarshalFromString(resp, &result)
+		if err != nil {
+			// todo json错误
+			ctx.Next()
+		}
+		_, _ = ctx.JSON(result)
 		return
 	}
-	privateValue := ctx.Values().Get(model.PrivateContextKey)
-	// 获取参数 生成key
-	rKey := genRedisKey(ctx.Request().RequestURI, model.PrivateColName, fmt.Sprintf("%v", privateValue))
-	// 获取缓存内容
-	resp, err := c.C.Rdb.Get(ctx.Request().Context(), rKey).Result()
-	if err != nil {
-		if err != redis.ErrKeyNotFound {
-			// todo redis错误处理
-		}
-		ctx.Next()
-	}
-	// 返回数据
-	result := map[string]interface{}{}
-	err = jsoniter.UnmarshalFromString(resp, &result)
-	if err != nil {
-		// todo json错误
-		ctx.Next()
-	}
-	_, _ = ctx.JSON(result)
-	return
 }
