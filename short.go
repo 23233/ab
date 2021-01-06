@@ -171,6 +171,11 @@ func (c *MysqlInstance) check() {
 		} else {
 			c.connect()
 		}
+	} else {
+		err := c.ping()
+		if err != nil {
+			panic(errors.Wrap(err, "[mysql] connect mysql fail"))
+		}
 	}
 }
 func (c *MysqlInstance) connect() {
@@ -205,6 +210,11 @@ func (c *RedisInstance) check() {
 		} else {
 			c.connect()
 		}
+	} else {
+		err := c.ping()
+		if err != nil {
+			panic(errors.Wrap(err, "[redis] connect redis fail"))
+		}
 	}
 }
 func (c *RedisInstance) connect() {
@@ -234,7 +244,7 @@ type Config struct {
 	Party iris.Party
 	MysqlInstance
 	RedisInstance
-	StructList []SingleModel
+	StructList []*SingleModel
 }
 
 type modelInfo struct {

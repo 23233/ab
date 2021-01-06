@@ -95,80 +95,84 @@ func (c *RestApi) Run() {
 		// 获取所有方法
 		methods := item.getMethods()
 
-		// 获取全部列表
-		if !isContain(methods, "get(all)") {
-			var h context.Handler
-			if item.GetAllFunc == nil {
-				h = c.GetAllFunc
-			} else {
-				h = item.GetAllFunc
-			}
-			r := api.Handle("GET", "/", h)
-			if item.CacheTime >= 1 || item.GetAllCacheTime >= 1 {
-				r.Use(c.getCacheMiddleware("list"))
-			}
-		}
+		if len(methods) >= 1 {
 
-		// 获取单条
-		if !isContain(methods, "get(single)") {
-			var h context.Handler
-			if item.GetSingleFunc == nil {
-				h = c.GetSingle
-			} else {
-				h = item.GetSingleFunc
+			// 获取全部列表
+			if isContain(methods, "get(all)") {
+				var h context.Handler
+				if item.GetAllFunc == nil {
+					h = c.GetAllFunc
+				} else {
+					h = item.GetAllFunc
+				}
+				r := api.Handle("GET", "/", h)
+				if item.CacheTime >= 1 || item.GetAllCacheTime >= 1 {
+					r.Use(c.getCacheMiddleware("list"))
+				}
 			}
-			r := api.Handle("GET", "/{id:uint64}", h)
-			if item.CacheTime >= 1 || item.GetSingleCacheTime >= 1 {
-				r.Use(c.getCacheMiddleware("single"))
-			}
-		}
 
-		// 新增
-		if !isContain(methods, "post") {
+			// 获取单条
+			if isContain(methods, "get(single)") {
+				var h context.Handler
+				if item.GetSingleFunc == nil {
+					h = c.GetSingle
+				} else {
+					h = item.GetSingleFunc
+				}
+				r := api.Handle("GET", "/{id:uint64}", h)
+				if item.CacheTime >= 1 || item.GetSingleCacheTime >= 1 {
+					r.Use(c.getCacheMiddleware("single"))
+				}
+			}
 
-			var h context.Handler
-			if item.PostFunc == nil {
-				h = c.AddData
-			} else {
-				h = item.PostFunc
-			}
-			route := api.Handle("POST", "/", h)
+			// 新增
+			if isContain(methods, "post") {
 
-			// 判断是否有自定义验证器
-			if item.PostValidator != nil {
-				route.Use(sv.Run(item.PostValidator))
-			}
-		}
+				var h context.Handler
+				if item.PostFunc == nil {
+					h = c.AddData
+				} else {
+					h = item.PostFunc
+				}
+				route := api.Handle("POST", "/", h)
 
-		// 修改
-		if !isContain(methods, "put") {
-			var h context.Handler
-			if item.PutFunc == nil {
-				h = c.EditData
-			} else {
-				h = item.PutFunc
+				// 判断是否有自定义验证器
+				if item.PostValidator != nil {
+					route.Use(sv.Run(item.PostValidator))
+				}
 			}
-			route := api.Handle("PUT", "/{id:uint64}", h)
-			// 判断是否有自定义验证器
-			if item.PutValidator != nil {
-				route.Use(sv.Run(item.PutValidator))
-			}
-		}
 
-		// 删除
-		if !isContain(methods, "delete") {
+			// 修改
+			if isContain(methods, "put") {
+				var h context.Handler
+				if item.PutFunc == nil {
+					h = c.EditData
+				} else {
+					h = item.PutFunc
+				}
+				route := api.Handle("PUT", "/{id:uint64}", h)
+				// 判断是否有自定义验证器
+				if item.PutValidator != nil {
+					route.Use(sv.Run(item.PutValidator))
+				}
+			}
 
-			var h context.Handler
-			if item.DeleteFunc == nil {
-				h = c.DeleteData
-			} else {
-				h = item.DeleteFunc
+			// 删除
+			if isContain(methods, "delete") {
+
+				var h context.Handler
+				if item.DeleteFunc == nil {
+					h = c.DeleteData
+				} else {
+					h = item.DeleteFunc
+				}
+				route := api.Handle("DELETE", "/{id:uint64}", h)
+				// 判断是否有自定义验证器
+				if item.DeleteValidator != nil {
+					route.Use(sv.Run(item.DeleteValidator))
+				}
 			}
-			route := api.Handle("DELETE", "/{id:uint64}", h)
-			// 判断是否有自定义验证器
-			if item.DeleteValidator != nil {
-				route.Use(sv.Run(item.DeleteValidator))
-			}
+
 		}
 
 	}
@@ -176,13 +180,13 @@ func (c *RestApi) Run() {
 }
 
 // 通过路径获取对应的模型信息
-func (c *RestApi) pathGetModel(pathName string) SingleModel {
+func (c *RestApi) pathGetModel(pathName string) *SingleModel {
 	for _, m := range c.C.StructList {
 		if m.info.FullPath == pathName || strings.HasPrefix(pathName, m.info.FullPath) {
 			return m
 		}
 	}
-	return SingleModel{}
+	return new(SingleModel)
 }
 
 func (c *RestApi) tableNameReflectFieldsAndTypes(table interface{}) tableFieldsResp {
@@ -258,13 +262,13 @@ func (c *RestApi) tableNameGetModel(tableName string) (interface{}, error) {
 }
 
 // 通过模型名获取模型信息
-func (c *RestApi) tableNameGetModelInfo(tableName string) (SingleModel, error) {
+func (c *RestApi) tableNameGetModelInfo(tableName string) (*SingleModel, error) {
 	for _, l := range c.C.StructList {
 		if l.info.MapName == tableName {
 			return l, nil
 		}
 	}
-	return SingleModel{}, errors.New("未找到模型")
+	return new(SingleModel), errors.New("未找到模型")
 }
 
 // 获取内容

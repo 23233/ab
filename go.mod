@@ -6,6 +6,7 @@ require (
 	github.com/23233/sv v1.1.2
 	github.com/OneOfOne/xxhash v1.2.8
 	github.com/go-redis/redis/v8 v8.4.4
+	github.com/iris-contrib/httpexpect/v2 v2.0.5
 	github.com/json-iterator/go v1.1.10
 	github.com/jxskiss/base62 v0.0.0-20191017122030-4f11678b909b
 	github.com/k0kubun/colorstring v0.0.0-20150214042306-9440f1994b88 // indirect

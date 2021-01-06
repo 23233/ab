@@ -3,12 +3,14 @@ package main
 import (
 	"github.com/23233/ab"
 	"github.com/23233/ab/_examples/model"
+	"github.com/go-redis/redis/v8"
 	"github.com/kataras/iris/v12"
 	_ "github.com/mattn/go-sqlite3"
 	"xorm.io/xorm"
 )
 
 var Engine *xorm.Engine
+var Rdb *redis.Client
 
 func init() {
 	// database 连接器
@@ -27,6 +29,14 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
+
+	// redis instance
+	Rdb = redis.NewClient(&redis.Options{
+		Addr:     "127.0.0.1:6379",
+		Password: "OyYxP4HCX9dNuMKkORHWH9vhHoJJNoti",
+		DB:       5,
+	})
+
 }
 
 func NewApp() *iris.Application {
@@ -48,8 +58,16 @@ func NewApp() *iris.Application {
 	})
 
 	v1 := app.Party("/api/v1")
-	ab.New(ab.Config{
+	abConfig := ab.Config{
 		Party: v1,
+		MysqlInstance: ab.MysqlInstance{
+			//MysqlConfig: mc,
+			Mdb: Engine,
+		},
+		RedisInstance: ab.RedisInstance{
+			//RedisConfig: rc,
+			Rdb: Rdb,
+		},
 		StructList: []ab.SingleModel{
 			{
 				Model:             new(model.TestModelA),
@@ -71,8 +89,8 @@ func NewApp() *iris.Application {
 				Model: new(model.TestStructComplexModel),
 			},
 		},
-		Engine: Engine,
-	})
+	}
+	ab.New(&abConfig)
 	return app
 }
 

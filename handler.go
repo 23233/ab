@@ -191,7 +191,7 @@ func (c *RestApi) GetSingle(ctx iris.Context) {
 	}
 	model := c.pathGetModel(ctx.Path())
 	privateValue := ctx.Values().Get(model.PrivateContextKey)
-	newData := c.newModel(model.info.MapName)
+	newData := c.newType(model.Model)
 
 	var base = func() *xorm.Session {
 		if model.private {
@@ -366,7 +366,7 @@ func (c *RestApi) EditData(ctx iris.Context) {
 		return
 	}
 
-	_, _ = ctx.JSON(iris.Map{"id": id})
+	_, _ = ctx.JSON(singleData)
 }
 
 // DeleteData 删除数据 /{id:uint64}
@@ -451,16 +451,19 @@ func (c *RestApi) getCacheMiddleware(from string) iris.Handler {
 			if err != redis.ErrKeyNotFound {
 				// todo redis错误处理
 			}
-			ctx.Next()
+		} else {
+			// 返回数据
+			result := map[string]interface{}{}
+			err = jsoniter.UnmarshalFromString(resp, &result)
+			if err != nil {
+				// todo json错误
+			} else {
+				result["status"] = "cache"
+				_, _ = ctx.JSON(result)
+				return
+			}
 		}
-		// 返回数据
-		result := map[string]interface{}{}
-		err = jsoniter.UnmarshalFromString(resp, &result)
-		if err != nil {
-			// todo json错误
-			ctx.Next()
-		}
-		_, _ = ctx.JSON(result)
-		return
+		ctx.Next()
+
 	}
 }
