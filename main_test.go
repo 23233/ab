@@ -69,10 +69,17 @@ func TestNew(t *testing.T) {
 		},
 		Models: []*SingleModel{
 			{
-				Model:             new(testModel),
-				CacheTime:         1 * time.Minute,
-				PrivateContextKey: "code",
-				PrivateColName:    "code",
+				Model:     new(testModel),
+				CacheTime: 1 * time.Minute,
+				//PrivateContextKey: "code",
+				//PrivateColName:    "code",
+				//GetAllExtraFilters: map[string]string{
+				//	"code": "1",
+				//},
+				//GetSingleExtraFilters: map[string]string{
+				//	"code": "2",
+				//},
+
 			},
 		},
 	}

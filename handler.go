@@ -199,7 +199,20 @@ func (c *RestApi) GetSingle(ctx iris.Context) {
 		}
 		return c.C.Mdb.Table(newData)
 	}
-	has, err := base().ID(id).Get(newData)
+
+	where := func() *xorm.Session {
+		var d *xorm.Session
+		d = base()
+		// 额外附加字段
+		if len(model.getSingleExtraParams()) >= 1 {
+			for k, v := range model.GetSingleExtraFilters {
+				d = d.Where(fmt.Sprintf("%s = ?", k), v)
+			}
+		}
+		return d
+	}
+
+	has, err := where().ID(id).Get(newData)
 	if err != nil || has == false {
 		fastError(err, ctx, ctx.Tr("apiNotFoundDataFail", "查询数据失败"))
 		return
