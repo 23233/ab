@@ -21,6 +21,7 @@ type SingleModel struct {
 	private            bool                   //
 	PrivateContextKey  string                 // 上下文key
 	PrivateColName     string                 // 数据库字段名
+	privateMapName     string                 //
 	AllowMethods       []string               //
 	DisableMethods     []string               // get(all) get(single) post put delete
 	AllowSearchFields  []string               // 搜索的字段 struct名称
@@ -171,11 +172,10 @@ func (c *MysqlInstance) check() {
 		} else {
 			c.connect()
 		}
-	} else {
-		err := c.ping()
-		if err != nil {
-			panic(errors.Wrap(err, "[mysql] connect mysql fail"))
-		}
+	}
+	err := c.ping()
+	if err != nil {
+		panic(errors.Wrap(err, "[mysql] connect ping fail"))
 	}
 }
 func (c *MysqlInstance) connect() {
@@ -189,10 +189,7 @@ func (c *MysqlInstance) connect() {
 	engine.ShowSQL(c.ShowSql)
 
 	c.Mdb = engine
-	err = c.ping()
-	if err != nil {
-		panic(errors.Wrap(err, "[mysql] ping fail"))
-	}
+
 }
 func (c *MysqlInstance) ping() error {
 	return c.Mdb.Ping()
@@ -210,11 +207,10 @@ func (c *RedisInstance) check() {
 		} else {
 			c.connect()
 		}
-	} else {
-		err := c.ping()
-		if err != nil {
-			panic(errors.Wrap(err, "[redis] connect redis fail"))
-		}
+	}
+	err := c.ping()
+	if err != nil {
+		panic(errors.Wrap(err, "[redis] connect ping fail"))
 	}
 }
 func (c *RedisInstance) connect() {
@@ -229,10 +225,6 @@ func (c *RedisInstance) connect() {
 		PoolSize: poolSize,
 	})
 	c.Rdb = client
-	err := c.ping()
-	if err != nil {
-		panic(errors.Wrap(err, "[redis] ping fail"))
-	}
 }
 func (c *RedisInstance) ping() error {
 	var ctx = _ctx.Background()
@@ -244,7 +236,7 @@ type Config struct {
 	Party iris.Party
 	MysqlInstance
 	RedisInstance
-	StructList []*SingleModel
+	Models []*SingleModel
 }
 
 type modelInfo struct {

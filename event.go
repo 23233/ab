@@ -3,7 +3,7 @@ package ab
 func (c *RestApi) checkConfig() {
 	c.C.MysqlInstance.check()
 	hasCache := false
-	for _, model := range c.C.StructList {
+	for _, model := range c.C.Models {
 		if model.getAllListCacheTime() >= 1 || model.getSingleCacheTime() >= 1 {
 			hasCache = true
 			break

@@ -240,7 +240,7 @@ func (c *RestApi) AddData(ctx iris.Context) {
 	}
 	if model.private {
 		privateName := ctx.Values().Get(model.PrivateContextKey)
-		private := newInstance.Elem().FieldByName(model.PrivateColName)
+		private := newInstance.Elem().FieldByName(model.privateMapName)
 		c := fmt.Sprintf("%v", privateName)
 		switch private.Type().String() {
 		case "string":
@@ -310,7 +310,7 @@ func (c *RestApi) EditData(ctx iris.Context) {
 	}
 
 	if model.private {
-		private := newInstance.Elem().FieldByName(model.PrivateColName)
+		private := newInstance.Elem().FieldByName(model.privateMapName)
 		c := fmt.Sprintf("%v", privateValue)
 		switch private.Type().String() {
 		case "string":
@@ -375,7 +375,7 @@ func (c *RestApi) DeleteData(ctx iris.Context) {
 	model := c.pathGetModel(ctx.Path())
 	privateValue := ctx.Values().Get(model.PrivateContextKey)
 	id, err := ctx.Params().GetUint64("id")
-	newData := c.newModel(model.info.MapName)
+	newData := c.newType(model.Model)
 
 	if err != nil {
 		fastError(err, ctx)
@@ -388,7 +388,6 @@ func (c *RestApi) DeleteData(ctx iris.Context) {
 		return c.C.Mdb.Table(newData)
 	}
 	// 先获取数据是否存在
-
 	has, err := base().ID(id).Get(newData)
 	if err != nil {
 		fastError(err, ctx)

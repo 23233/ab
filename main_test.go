@@ -5,6 +5,7 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/iris-contrib/httpexpect/v2"
 	"github.com/kataras/iris/v12"
+	"github.com/kataras/iris/v12/context"
 	"github.com/kataras/iris/v12/httptest"
 	_ "github.com/mattn/go-sqlite3"
 	"testing"
@@ -17,13 +18,17 @@ type testModel struct {
 	Name string `xorm:"varchar(10)" json:"name"`
 	Age  uint64 `json:"age"`
 	Desc string `xorm:"varchar(20)" json:"desc"`
+	Code uint64 `xorm:"" json:"code"`
 }
 
 func TestNew(t *testing.T) {
 	app := iris.New()
 	prefix := "/api/v1"
 
-	p := app.Party(prefix)
+	p := app.Party(prefix, func(ctx *context.Context) {
+		ctx.Values().Set("code", 1)
+		ctx.Next()
+	})
 
 	//// mysql config
 	//mc := MysqlConfig{
@@ -54,7 +59,6 @@ func TestNew(t *testing.T) {
 		DB:       5,
 	})
 
-	// test msql config valid
 	checkMc := &Config{
 		Party: p,
 		MysqlInstance: MysqlInstance{
@@ -63,15 +67,17 @@ func TestNew(t *testing.T) {
 		RedisInstance: RedisInstance{
 			Rdb: rdb,
 		},
-		StructList: []*SingleModel{
+		Models: []*SingleModel{
 			{
-				Model:     new(testModel),
-				CacheTime: 1 * time.Minute,
+				Model:             new(testModel),
+				CacheTime:         1 * time.Minute,
+				PrivateContextKey: "code",
+				PrivateColName:    "code",
 			},
 		},
 	}
 	New(checkMc)
-	testModel := mdb.TableName(checkMc.StructList[0].Model)
+	testModel := mdb.TableName(checkMc.Models[0].Model)
 	fp := prefix + "/" + testModel
 	e := httptest.New(t, app)
 	testCrud(t, e, fp)

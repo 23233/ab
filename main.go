@@ -21,7 +21,7 @@ func New(c *Config) *RestApi {
 }
 
 func (c *RestApi) Run() {
-	for _, item := range c.C.StructList {
+	for _, item := range c.C.Models {
 		model := item.Model
 		apiName := c.C.Mdb.TableName(model)
 		// 拼接效率高
@@ -73,6 +73,16 @@ func (c *RestApi) Run() {
 			FullPath:  api.GetRelPath(),
 		}
 		item.info = info
+
+		if item.private {
+			item.privateMapName = item.PrivateColName
+			for _, field := range info.FieldList.Fields {
+				if field.Name == item.PrivateColName || field.MapName == item.PrivateColName {
+					item.privateMapName = field.Name
+					break
+				}
+			}
+		}
 
 		if len(item.AllowSearchFields) >= 1 {
 			var result []string
@@ -181,7 +191,7 @@ func (c *RestApi) Run() {
 
 // 通过路径获取对应的模型信息
 func (c *RestApi) pathGetModel(pathName string) *SingleModel {
-	for _, m := range c.C.StructList {
+	for _, m := range c.C.Models {
 		if m.info.FullPath == pathName || strings.HasPrefix(pathName, m.info.FullPath) {
 			return m
 		}
@@ -253,7 +263,7 @@ func (c *RestApi) tableNameGetNestedStructMaps(r reflect.Type) []structInfo {
 
 // 通过模型名获取实例
 func (c *RestApi) tableNameGetModel(tableName string) (interface{}, error) {
-	for _, item := range c.C.StructList {
+	for _, item := range c.C.Models {
 		if item.info.MapName == tableName {
 			return item.Model, nil
 		}
@@ -263,7 +273,7 @@ func (c *RestApi) tableNameGetModel(tableName string) (interface{}, error) {
 
 // 通过模型名获取模型信息
 func (c *RestApi) tableNameGetModelInfo(tableName string) (*SingleModel, error) {
-	for _, l := range c.C.StructList {
+	for _, l := range c.C.Models {
 		if l.info.MapName == tableName {
 			return l, nil
 		}
