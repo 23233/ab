@@ -171,11 +171,11 @@ func (c *RestApi) GetAllFunc(ctx iris.Context) {
 		// 保存结果
 		resp, err := jsoniter.MarshalToString(result)
 		if err != nil {
-			// todo redis错误处理
+			c.C.ErrorTrace(err, "json_marshal", "json", "get(all)")
 		}
 		err = c.saveToRedis(ctx.Request().Context(), rKey, resp, model.getAllListCacheTime())
 		if err != nil {
-			// todo redis保存错误处理
+			c.C.ErrorTrace(err, "save_to_redis", "redis", "get(all)")
 		}
 	}
 
@@ -232,11 +232,12 @@ func (c *RestApi) GetSingle(ctx iris.Context) {
 		// 保存结果
 		resp, err := jsoniter.MarshalToString(newData)
 		if err != nil {
-			// todo redis错误处理
+			c.C.ErrorTrace(err, "json_marshal", "json", "get(single)")
 		}
 		err = c.saveToRedis(ctx.Request().Context(), rKey, resp, model.getSingleCacheTime())
 		if err != nil {
-			// todo redis保存错误处理
+			c.C.ErrorTrace(err, "save_to_redis", "redis", "get(single)")
+
 		}
 	}
 
@@ -349,7 +350,7 @@ func (c *RestApi) EditData(ctx iris.Context) {
 		rKey := genRedisKey(ctx.Request().RequestURI, model.PrivateColName, fmt.Sprintf("%v", privateValue))
 		err := c.deleteToRedis(ctx.Request().Context(), rKey)
 		if err != nil {
-			// todo redis删除缓存出错
+			c.C.ErrorTrace(err, "delete", "redis", "edit")
 		}
 	}
 
@@ -423,7 +424,8 @@ func (c *RestApi) DeleteData(ctx iris.Context) {
 		rKey := genRedisKey(ctx.Request().RequestURI, model.PrivateColName, fmt.Sprintf("%v", privateValue))
 		err := c.deleteToRedis(ctx.Request().Context(), rKey)
 		if err != nil {
-			// todo redis删除缓存出错
+			c.C.ErrorTrace(err, "redis_delete", "redis", "delete")
+
 		}
 	}
 
@@ -461,14 +463,14 @@ func (c *RestApi) getCacheMiddleware(from string) iris.Handler {
 		resp, err := c.C.Rdb.Get(ctx.Request().Context(), rKey).Result()
 		if err != nil {
 			if err != redis.ErrKeyNotFound {
-				// todo redis错误处理
+				c.C.ErrorTrace(err, "read_cache", "redis", from)
 			}
 		} else {
 			// 返回数据
 			result := map[string]interface{}{}
 			err = jsoniter.UnmarshalFromString(resp, &result)
 			if err != nil {
-				// todo json错误
+				c.C.ErrorTrace(err, "json_unmarshal", "json", from)
 			} else {
 				result["status"] = "cache"
 				_, _ = ctx.JSON(result)

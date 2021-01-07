@@ -1,5 +1,7 @@
 package ab
 
+import "log"
+
 func (c *RestApi) checkConfig() {
 	c.C.MysqlInstance.check()
 	hasCache := false
@@ -11,5 +13,10 @@ func (c *RestApi) checkConfig() {
 	}
 	if hasCache {
 		c.C.RedisInstance.check()
+	}
+	if c.C.ErrorTrace == nil {
+		c.C.ErrorTrace = func(err error, event, from, router string) {
+			log.Printf("[ab][%s] error:%s event:%s from:%s ", router, err, event, from)
+		}
 	}
 }

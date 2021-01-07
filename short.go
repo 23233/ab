@@ -236,7 +236,8 @@ type Config struct {
 	Party iris.Party
 	MysqlInstance
 	RedisInstance
-	Models []*SingleModel
+	Models     []*SingleModel
+	ErrorTrace func(err error, event, from, router string) // error trace func
 }
 
 type modelInfo struct {
