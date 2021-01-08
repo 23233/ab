@@ -116,9 +116,15 @@ func (c *RestApi) Run() {
 					h = item.GetAllFunc
 				}
 				r := api.Handle("GET", "/", h)
+				// rate
+				if item.getAllRate() != nil {
+					r.Use(LimitHandler(item.getAllRate(), item.RateErrorFunc))
+				}
+				// cache
 				if item.CacheTime >= 1 || item.GetAllCacheTime >= 1 {
 					r.Use(c.getCacheMiddleware("list"))
 				}
+
 			}
 
 			// 获取单条
@@ -130,6 +136,11 @@ func (c *RestApi) Run() {
 					h = item.GetSingleFunc
 				}
 				r := api.Handle("GET", "/{id:uint64}", h)
+				// rate
+				if item.getSingleRate() != nil {
+					r.Use(LimitHandler(item.getSingleRate(), item.RateErrorFunc))
+				}
+				// cache
 				if item.CacheTime >= 1 || item.GetSingleCacheTime >= 1 {
 					r.Use(c.getCacheMiddleware("single"))
 				}
@@ -146,6 +157,11 @@ func (c *RestApi) Run() {
 				}
 				route := api.Handle("POST", "/", h)
 
+				// rate
+				if item.getAddRate() != nil {
+					route.Use(LimitHandler(item.getAddRate(), item.RateErrorFunc))
+				}
+
 				// 判断是否有自定义验证器
 				if item.PostValidator != nil {
 					route.Use(sv.Run(item.PostValidator))
@@ -161,6 +177,10 @@ func (c *RestApi) Run() {
 					h = item.PutFunc
 				}
 				route := api.Handle("PUT", "/{id:uint64}", h)
+				// rate
+				if item.getEditRate() != nil {
+					route.Use(LimitHandler(item.getEditRate(), item.RateErrorFunc))
+				}
 				// 判断是否有自定义验证器
 				if item.PutValidator != nil {
 					route.Use(sv.Run(item.PutValidator))
@@ -169,7 +189,6 @@ func (c *RestApi) Run() {
 
 			// 删除
 			if isContain(methods, "delete") {
-
 				var h context.Handler
 				if item.DeleteFunc == nil {
 					h = c.DeleteData
@@ -177,6 +196,10 @@ func (c *RestApi) Run() {
 					h = item.DeleteFunc
 				}
 				route := api.Handle("DELETE", "/{id:uint64}", h)
+				// rate
+				if item.getDeleteRate() != nil {
+					route.Use(LimitHandler(item.getDeleteRate(), item.RateErrorFunc))
+				}
 				// 判断是否有自定义验证器
 				if item.DeleteValidator != nil {
 					route.Use(sv.Run(item.DeleteValidator))

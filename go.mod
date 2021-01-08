@@ -5,6 +5,7 @@ go 1.14
 require (
 	github.com/23233/sv v1.1.2
 	github.com/OneOfOne/xxhash v1.2.8
+	github.com/didip/tollbooth/v6 v6.1.0
 	github.com/go-redis/redis/v8 v8.4.4
 	github.com/iris-contrib/httpexpect/v2 v2.0.5
 	github.com/json-iterator/go v1.1.10
