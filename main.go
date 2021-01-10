@@ -78,6 +78,7 @@ func (c *RestApi) Run() {
 			item.privateMapName = item.PrivateColName
 			for _, field := range info.FieldList.Fields {
 				if field.Name == item.PrivateColName || field.MapName == item.PrivateColName {
+					item.PrivateColName = field.MapName
 					item.privateMapName = field.Name
 					break
 				}
@@ -409,7 +410,7 @@ func (c *RestApi) getCtxValues(routerName string, ctx iris.Context) (reflect.Val
 	return newInstance, nil
 }
 
-// 模型反射一个新
+// 模型反射一个新数据
 func (c *RestApi) newModel(routerName string) interface{} {
 	cb, _ := c.tableNameGetModelInfo(routerName)
 	return c.newType(cb.Model)

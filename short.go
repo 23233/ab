@@ -20,10 +20,10 @@ type SingleModel struct {
 	Suffix                string                                 // 路由后缀
 	Model                 interface{}                            // xorm model
 	info                  modelInfo                              //
-	private               bool                                   //
+	private               bool                                   // 当有context key 以及col name时为true
 	PrivateContextKey     string                                 // 上下文key string int uint
 	PrivateColName        string                                 // 数据库字段名 MapName or ColName is ok
-	privateMapName        string                                 //
+	privateMapName        string                                 // 根据colName 找到真实的map name
 	AllowMethods          []string                               // allow methods first
 	DisableMethods        []string                               // get(all) get(single) post put delete
 	AllowSearchFields     []string                               // 搜索的字段 struct名称
