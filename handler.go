@@ -52,8 +52,8 @@ func (c *RestApi) GetAllFunc(ctx iris.Context) {
 	orderBy := ctx.URLParam("order")
 	// 从url中解析出filter
 	filterList := filterMatch(ctx.URLParams(), model.info.FieldList.Fields)
-	s := ctx.URLParam("search")
-	search := strings.ReplaceAll(s, "__", "%")
+	searchStr := ctx.URLParam("search")
+	search := strings.ReplaceAll(searchStr, "__", "%")
 	if len(search) >= 1 {
 		if len(model.searchFields) < 1 {
 			fastError(errors.New("搜索功能未启用"), ctx)
@@ -83,22 +83,22 @@ func (c *RestApi) GetAllFunc(ctx iris.Context) {
 		var d *xorm.Session
 		d = base()
 		if len(model.info.FieldList.Deleted) >= 1 {
-			d = base().Where(fmt.Sprintf("%s = ? OR %s IS NULL", model.info.FieldList.Deleted, model.info.FieldList.Deleted), "0001-01-01 00:00:00")
+			d = base().Where(fmt.Sprintf("`%s` = ? OR `%s` IS NULL", model.info.FieldList.Deleted, model.info.FieldList.Deleted), "0001-01-01 00:00:00")
 		}
 		if len(filterList) >= 1 {
 			for k, v := range filterList {
-				d = d.Where(fmt.Sprintf("%s = ?", k), v)
+				d = d.Where(fmt.Sprintf("`%s` = ?", k), v)
 			}
 		}
 		// 额外附加字段
 		if len(model.GetAllExtraFilters) >= 1 {
 			for k, v := range model.GetAllExtraFilters {
-				d = d.Where(fmt.Sprintf("%s = ?", k), v)
+				d = d.Where(fmt.Sprintf("`%s` = ?", k), v)
 			}
 		}
 		if len(search) >= 1 {
 			for _, s := range model.searchFields {
-				d = d.Where(fmt.Sprintf("%s like ?", s), search)
+				d = d.Where(fmt.Sprintf("`%s` like ?", s), search)
 			}
 		}
 		return d
@@ -107,7 +107,7 @@ func (c *RestApi) GetAllFunc(ctx iris.Context) {
 	// 获取总数量
 	allCount, err := where().Count()
 	if err != nil {
-		fastError(err, ctx)
+		fastError(err, ctx, ctx.Tr("apiGetListCountFail", "获取总数量发生错误"))
 		return
 	}
 
@@ -120,7 +120,7 @@ func (c *RestApi) GetAllFunc(ctx iris.Context) {
 			dataList, err = where().Limit(pageSize, start).QueryString()
 		}
 		if err != nil {
-			fastError(err, ctx)
+			fastError(err, ctx, ctx.Tr("apiGetListDataFail", "获取内容列表发生错误"))
 			return
 		}
 	}
@@ -160,7 +160,7 @@ func (c *RestApi) GetAllFunc(ctx iris.Context) {
 		result["filter"] = filterList
 	}
 	if len(search) >= 1 {
-		result["search"] = s
+		result["search"] = searchStr
 	}
 
 	// 如果启用了缓存
@@ -186,7 +186,7 @@ func (c *RestApi) GetAllFunc(ctx iris.Context) {
 func (c *RestApi) GetSingle(ctx iris.Context) {
 	id, err := ctx.Params().GetUint64("id")
 	if err != nil {
-		fastError(err, ctx)
+		fastError(err, ctx, ctx.Tr("apiParamsFail", "参数错误"))
 		return
 	}
 	model := c.pathGetModel(ctx.Path())
@@ -249,7 +249,7 @@ func (c *RestApi) AddData(ctx iris.Context) {
 	model := c.pathGetModel(ctx.Path())
 	newInstance, err := c.getCtxValues(model.info.MapName, ctx)
 	if err != nil {
-		fastError(err, ctx)
+		fastError(err, ctx, ctx.Tr("apiParamsFail", "获取请求内容出错"))
 		return
 	}
 	if model.private {
@@ -297,7 +297,7 @@ func (c *RestApi) EditData(ctx iris.Context) {
 	privateValue := ctx.Values().Get(model.PrivateContextKey)
 	id, err := ctx.Params().GetUint64("id")
 	if err != nil {
-		fastError(err, ctx)
+		fastError(err, ctx, ctx.Tr("apiGetListCountFail", "参数获取错误"))
 		return
 	}
 
@@ -310,7 +310,7 @@ func (c *RestApi) EditData(ctx iris.Context) {
 	// 先获取数据是否存在
 	has, err := base().Where("id = ?", id).Exist()
 	if err != nil {
-		fastError(err, ctx)
+		fastError(err, ctx, ctx.Tr("apiDataExistsFail", "获取数据是否存在发生错误"))
 		return
 	}
 	if has != true {
@@ -319,7 +319,7 @@ func (c *RestApi) EditData(ctx iris.Context) {
 	}
 	newInstance, err := c.getCtxValues(model.info.MapName, ctx)
 	if err != nil {
-		fastError(err, ctx)
+		fastError(err, ctx, ctx.Tr("apiParamsFail", "获取请求内容出错"))
 		return
 	}
 
@@ -392,7 +392,7 @@ func (c *RestApi) DeleteData(ctx iris.Context) {
 	newData := c.newType(model.Model)
 
 	if err != nil {
-		fastError(err, ctx)
+		fastError(err, ctx, ctx.Tr("apiParamsFail", "获取参数错误"))
 		return
 	}
 	var base = func() *xorm.Session {
@@ -404,7 +404,7 @@ func (c *RestApi) DeleteData(ctx iris.Context) {
 	// 先获取数据是否存在
 	has, err := base().ID(id).Get(newData)
 	if err != nil {
-		fastError(err, ctx)
+		fastError(err, ctx, ctx.Tr("apiDataExistsFail", "获取数据是否存在发生错误"))
 		return
 	}
 	if has != true {
