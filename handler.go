@@ -97,9 +97,11 @@ func (c *RestApi) GetAllFunc(ctx iris.Context) {
 			}
 		}
 		if len(search) >= 1 {
+			searchSql := make([]string, 0, len(model.searchFields))
 			for _, s := range model.searchFields {
-				d = d.Where(fmt.Sprintf("`%s` like ?", s), search)
+				searchSql = append(searchSql, fmt.Sprintf("`%s` like '%s'", s, search))
 			}
+			d = d.Where(strings.Join(searchSql, " or "))
 		}
 		return d
 	}
