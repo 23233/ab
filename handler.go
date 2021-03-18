@@ -116,7 +116,9 @@ func (c *RestApi) GetAllFunc(ctx iris.Context) {
 	// 获取内容
 	dataList := make([]map[string]string, 0)
 	if allCount >= 1 {
-		if len(model.info.FieldList.AutoIncrement) >= 1 && len(filterList) < 1 && len(orderBy) < 1 && len(descField) < 1 && len(search) < 1 {
+		// 简单解决深度翻页性能问题
+		// 如果存在自增且且是软删除并且不包含其他筛选条件
+		if len(model.info.FieldList.AutoIncrement) >= 1 && len(model.info.FieldList.Version) >= 1 && len(filterList) < 1 && len(orderBy) < 1 && len(descField) < 1 && len(search) < 1 {
 			dataList, err = where().And(fmt.Sprintf("%s between ? and ?", model.info.FieldList.AutoIncrement), start, end).Limit(pageSize).QueryString()
 		} else {
 			dataList, err = where().Limit(pageSize, start).QueryString()
@@ -181,6 +183,12 @@ func (c *RestApi) GetAllFunc(ctx iris.Context) {
 		}
 	}
 
+	// 如果需要自定义返回 把数据内容传过去
+	if model.GetAllCallFunc != nil {
+		model.GetAllCallFunc(ctx, result, dataList)
+		return
+	}
+
 	_, _ = ctx.JSON(result)
 }
 
@@ -241,6 +249,11 @@ func (c *RestApi) GetSingle(ctx iris.Context) {
 			c.C.ErrorTrace(err, "save_to_redis", "redis", "get(single)")
 
 		}
+	}
+	// 如果需要自定义返回 把数据内容传过去
+	if model.GetSingleCallFunc != nil {
+		model.GetSingleCallFunc(ctx, newData)
+		return
 	}
 
 	_, _ = ctx.JSON(newData)
