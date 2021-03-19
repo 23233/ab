@@ -31,8 +31,9 @@ func isContain(items []string, item string) bool {
 	return false
 }
 
-func filterMatch(fullParams map[string]string, fields []structInfo) map[string]string {
-	d := make(map[string]string, 0)
+func filterMatch(fullParams map[string]string, fields []structInfo) (map[string]string, map[string]string) {
+	filter := make(map[string]string, 0)
+	or := make(map[string]string, 0)
 	for k, v := range fullParams {
 		if strings.HasPrefix(k, "filter_") {
 			for _, field := range fields {
@@ -41,12 +42,22 @@ func filterMatch(fullParams map[string]string, fields []structInfo) map[string]s
 					if len(v) > 64 {
 						break
 					}
-					d[field.MapName] = strings.Trim(v, " ")
+					filter[field.MapName] = strings.Trim(v, " ")
+				}
+			}
+		} else if strings.HasPrefix(k, "or_") {
+			for _, field := range fields {
+				if field.MapName == strings.Replace(k, "or_", "", 1) {
+					// 为了安全 长度限制一下
+					if len(v) > 64 {
+						break
+					}
+					or[field.MapName] = strings.Trim(v, " ")
 				}
 			}
 		}
 	}
-	return d
+	return filter, or
 }
 
 func IsZeroOfUnderlyingType(x interface{}) bool {

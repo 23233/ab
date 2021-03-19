@@ -16,53 +16,54 @@ import (
 
 type SingleModel struct {
 	Middlewares           []context.Handler
-	Prefix                string                                                                // 路由前缀
-	Suffix                string                                                                // 路由后缀
-	Model                 interface{}                                                           // xorm model
-	info                  modelInfo                                                             //
-	private               bool                                                                  // 当有context key 以及col name时为true
-	PrivateContextKey     string                                                                // 上下文key string int uint
-	PrivateColName        string                                                                // 数据库字段名 MapName or ColName is ok
-	privateMapName        string                                                                // 根据colName 找到真实的map name
-	AllowMethods          []string                                                              // allow methods first
-	DisableMethods        []string                                                              // get(all) get(single) post put delete
-	AllowSearchFields     []string                                                              // 搜索的字段 struct名称
-	searchFields          []string                                                              // allow search col names
-	GetAllFunc            func(ctx iris.Context)                                                // 覆盖获取全部方法
-	GetAllResponse        interface{}                                                           // 获取所有返回的内容替换 仅替换data数组 同名替换
-	GetAllCallFunc        func(ctx iris.Context, result iris.Map, dataList []map[string]string) // 获取全部返回处理
-	GetAllExtraFilters    map[string]string                                                     // 额外的固定过滤 key(数据库列名) 和 value 若与请求过滤重复则覆盖 优先级最高
-	allResp               respItem                                                              //
-	GetSingleFunc         func(ctx iris.Context)                                                // 覆盖获取单条方法
-	GetSingleResponse     interface{}                                                           // 获取单个返回的内容替换
-	GetSingleCallFunc     func(ctx iris.Context, result interface{})                            // 获取单个自定义返回
-	GetSingleExtraFilters map[string]string                                                     // 额外的固定过滤 key(数据库列名) 和 value 若与请求过滤重复则覆盖 优先级最高
-	singleResp            respItem                                                              //
-	PostFunc              func(ctx iris.Context)                                                // 覆盖新增方法
-	PostValidator         interface{}                                                           // 新增自定义验证器
-	PostResponse          interface{}                                                           // 新增返回内容
-	postResp              respItem                                                              //
-	PutFunc               func(ctx iris.Context)                                                // 覆盖修改方法
-	PutValidator          interface{}                                                           // 修改验证器
-	PutResponse           interface{}                                                           // 修改返回内容
-	putResp               respItem                                                              //
-	DeleteFunc            func(ctx iris.Context)                                                // 覆盖删除方法
-	DeleteValidator       interface{}                                                           // 删除验证器
-	DeleteResponse        interface{}                                                           // 删除返回内容
-	deleteResp            respItem                                                              //
-	CacheTime             time.Duration                                                         // full cache time
-	GetAllCacheTime       time.Duration                                                         // get all cache time
-	GetSingleCacheTime    time.Duration                                                         // get single cache time
-	DelayDeleteTime       time.Duration                                                         // 延迟多久双删 default 500ms
-	MaxPageSize           int                                                                   // max page size limit
-	MaxPageCount          int                                                                   // max page count limit
-	RateErrorFunc         func(*tollerr.HTTPError, iris.Context)                                //
-	Rate                  *limiter.Limiter                                                      // all
-	GetAllRate            *limiter.Limiter                                                      //
-	GetSingleRate         *limiter.Limiter                                                      //
-	AddRate               *limiter.Limiter                                                      //
-	PutRate               *limiter.Limiter                                                      //
-	DeleteRate            *limiter.Limiter                                                      //
+	Prefix                string                                                                         // 路由前缀
+	Suffix                string                                                                         // 路由后缀
+	Model                 interface{}                                                                    // xorm model
+	info                  modelInfo                                                                      //
+	private               bool                                                                           // 当有context key 以及col name时为true
+	PrivateContextKey     string                                                                         // 上下文key string int uint
+	PrivateColName        string                                                                         // 数据库字段名 MapName or ColName is ok
+	privateMapName        string                                                                         // 根据colName 找到真实的map name
+	AllowMethods          []string                                                                       // allow methods first
+	DisableMethods        []string                                                                       // get(all) get(single) post put delete
+	AllowSearchFields     []string                                                                       // 搜索的字段 struct名称
+	searchFields          []string                                                                       // allow search col names
+	GetAllFunc            func(ctx iris.Context)                                                         // 覆盖获取全部方法
+	GetAllResponse        interface{}                                                                    // 获取所有返回的内容替换 仅替换data数组 同名替换
+	GetAllResponseFunc    func(ctx iris.Context, result iris.Map, dataList []map[string]string) iris.Map // 返回内容替换的方法
+	GetAllExtraFilters    map[string]string                                                              // 额外的固定过滤 key(数据库列名) 和 value 若与请求过滤重复则覆盖 优先级最高
+	GetAllMustFilters     map[string]string                                                              // 获取全部必须拥有筛选
+	allResp               respItem                                                                       //
+	GetSingleFunc         func(ctx iris.Context)                                                         // 覆盖获取单条方法
+	GetSingleResponse     interface{}                                                                    // 获取单个返回的内容替换
+	GetSingleResponseFunc func(ctx iris.Context, item interface{}) interface{}                           // 获取单个返回内容替换的方法
+	GetSingleExtraFilters map[string]string                                                              // 额外的固定过滤 key(数据库列名) 和 value 若与请求过滤重复则覆盖 优先级最高
+	singleResp            respItem                                                                       //
+	PostFunc              func(ctx iris.Context)                                                         // 覆盖新增方法
+	PostValidator         interface{}                                                                    // 新增自定义验证器
+	PostResponse          interface{}                                                                    // 新增返回内容
+	postResp              respItem                                                                       //
+	PutFunc               func(ctx iris.Context)                                                         // 覆盖修改方法
+	PutValidator          interface{}                                                                    // 修改验证器
+	PutResponse           interface{}                                                                    // 修改返回内容
+	putResp               respItem                                                                       //
+	DeleteFunc            func(ctx iris.Context)                                                         // 覆盖删除方法
+	DeleteValidator       interface{}                                                                    // 删除验证器
+	DeleteResponse        interface{}                                                                    // 删除返回内容
+	deleteResp            respItem                                                                       //
+	CacheTime             time.Duration                                                                  // full cache time
+	GetAllCacheTime       time.Duration                                                                  // get all cache time
+	GetSingleCacheTime    time.Duration                                                                  // get single cache time
+	DelayDeleteTime       time.Duration                                                                  // 延迟多久双删 default 500ms
+	MaxPageSize           int                                                                            // max page size limit
+	MaxPageCount          int                                                                            // max page count limit
+	RateErrorFunc         func(*tollerr.HTTPError, iris.Context)                                         //
+	Rate                  *limiter.Limiter                                                               // all
+	GetAllRate            *limiter.Limiter                                                               //
+	GetSingleRate         *limiter.Limiter                                                               //
+	AddRate               *limiter.Limiter                                                               //
+	PutRate               *limiter.Limiter                                                               //
+	DeleteRate            *limiter.Limiter                                                               //
 }
 
 // getMethods 初始化请求方法 返回数组

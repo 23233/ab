@@ -33,8 +33,10 @@ func fastError(err error, ctx iris.Context, msg ...string) {
 // GetAllFunc 获取所有
 // page控制页码 page_size控制条数 最大均为100 100页 100条
 // order(asc) order_desc
-// search搜索 __会被替换为% search=__赵日天 sql会替换为 %赵日天
-// filter_[字段名]进行过滤 filter_id=1
+// search搜索 __会被替换为% eg:search=__赵日天 sql会替换为 %赵日天
+// filter_[字段名] 进行过滤 eg:filter_id=1 and的关系
+// or_[字段名] 进行过滤 eg:or_id=2 or的关系
+// 使用header的Cache-control no-cache 跳过缓存
 func (c *RestApi) GetAllFunc(ctx iris.Context) {
 	model := c.pathGetModel(ctx.Path())
 	page := ctx.URLParamIntDefault("page", 1)
@@ -51,7 +53,18 @@ func (c *RestApi) GetAllFunc(ctx iris.Context) {
 	descField := ctx.URLParam("order_desc")
 	orderBy := ctx.URLParam("order")
 	// 从url中解析出filter
-	filterList := filterMatch(ctx.URLParams(), model.info.FieldList.Fields)
+	filterList, orList := filterMatch(ctx.URLParams(), model.info.FieldList.Fields)
+
+	// 如果必传参数存在
+	if len(model.GetAllMustFilters) > 0 {
+		for k := range model.GetAllMustFilters {
+			if _, ok := filterList[k]; !ok {
+				fastError(nil, ctx, ctx.Tr("apiParamsFail", "参数错误"))
+				return
+			}
+		}
+	}
+
 	searchStr := ctx.URLParam("search")
 	search := strings.ReplaceAll(searchStr, "__", "%")
 	if len(search) >= 1 {
@@ -90,6 +103,13 @@ func (c *RestApi) GetAllFunc(ctx iris.Context) {
 				d = d.Where(fmt.Sprintf("`%s` = ?", k), v)
 			}
 		}
+		// or
+		if len(orList) >= 1 {
+			for k, v := range orList {
+				d = d.Or(fmt.Sprintf("`%s` = ?", k), v)
+			}
+		}
+
 		// 额外附加字段
 		if len(model.GetAllExtraFilters) >= 1 {
 			for k, v := range model.GetAllExtraFilters {
@@ -163,8 +183,16 @@ func (c *RestApi) GetAllFunc(ctx iris.Context) {
 	if len(filterList) >= 1 {
 		result["filter"] = filterList
 	}
+	if len(orList) >= 1 {
+		result["or"] = orList
+	}
 	if len(search) >= 1 {
 		result["search"] = searchStr
+	}
+
+	// 如果需要自定义返回 把数据内容传过去
+	if model.GetAllResponseFunc != nil {
+		result = model.GetAllResponseFunc(ctx, result, dataList)
 	}
 
 	// 如果启用了缓存
@@ -181,12 +209,6 @@ func (c *RestApi) GetAllFunc(ctx iris.Context) {
 		if err != nil {
 			c.C.ErrorTrace(err, "save_to_redis", "redis", "get(all)")
 		}
-	}
-
-	// 如果需要自定义返回 把数据内容传过去
-	if model.GetAllCallFunc != nil {
-		model.GetAllCallFunc(ctx, result, dataList)
-		return
 	}
 
 	_, _ = ctx.JSON(result)
@@ -234,6 +256,10 @@ func (c *RestApi) GetSingle(ctx iris.Context) {
 		_ = Replace(newData, n)
 		newData = n
 	}
+	// 如果需要自定义返回 把数据内容传过去
+	if model.GetSingleResponseFunc != nil {
+		newData = model.GetSingleResponseFunc(ctx, newData)
+	}
 
 	// 如果启用了缓存
 	if model.getSingleCacheTime() >= 1 {
@@ -249,11 +275,6 @@ func (c *RestApi) GetSingle(ctx iris.Context) {
 			c.C.ErrorTrace(err, "save_to_redis", "redis", "get(single)")
 
 		}
-	}
-	// 如果需要自定义返回 把数据内容传过去
-	if model.GetSingleCallFunc != nil {
-		model.GetSingleCallFunc(ctx, newData)
-		return
 	}
 
 	_, _ = ctx.JSON(newData)
