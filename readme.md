@@ -4,7 +4,8 @@
     * 最大均为100 100页 100条
 * order(asc) order_desc
 * search搜索 __会被替换为% search=__赵日天 会替换为 %赵日天
-* filter_[字段名] 进行过滤 filter_id=1 最长64位请注意
+* filter_[字段名] 进行过滤 filter_id=1 最长64位请注意 and关系
+* or_[字段名] 进行过滤 or_id=2 最长64位 or关系
 
 #### 限制
 
