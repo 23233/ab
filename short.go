@@ -41,7 +41,9 @@ type SingleModel struct {
 	singleResp            respItem                                                                       //
 	PostFunc              func(ctx iris.Context)                                                         // 覆盖新增方法
 	PostValidator         interface{}                                                                    // 新增自定义验证器
+	PostResponseFunc      func(ctx iris.Context, item interface{}) interface{}                           //
 	PostResponse          interface{}                                                                    // 新增返回内容
+	PostDataParse         func(ctx iris.Context, raw interface{}) interface{}                            //
 	postResp              respItem                                                                       //
 	PutFunc               func(ctx iris.Context)                                                         // 覆盖修改方法
 	PutValidator          interface{}                                                                    // 修改验证器

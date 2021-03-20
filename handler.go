@@ -312,16 +312,27 @@ func (c *RestApi) AddData(ctx iris.Context) {
 
 	singleData := newInstance.Interface()
 
+	// 如果需要把数据转化
+	if model.PostDataParse != nil {
+		singleData = model.PostDataParse(ctx, singleData)
+	}
+
 	aff, err := c.C.Mdb.Table(model.info.MapName).InsertOne(singleData)
 	if err != nil || aff == 0 {
 		fastError(err, ctx, ctx.Tr("apiAddDataFail", "新增数据失败"))
 		return
 	}
+
 	// 需要转换返回值
 	if model.postResp.Has {
 		n := c.newType(model.postResp.Instance)
 		_ = Replace(singleData, n)
 		singleData = n
+	}
+
+	// 需要自定义返回
+	if model.PostResponseFunc != nil {
+		singleData = model.PostResponseFunc(ctx, singleData)
 	}
 
 	_, _ = ctx.JSON(singleData)
